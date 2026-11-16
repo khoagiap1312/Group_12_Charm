@@ -1,17 +1,15 @@
-# COMMAND-LINE INTERFACE (CLI) FOR CHARM
-
-include("src/interfaces.jl")
-include("src/io_utils.jl")
-include("src/charm_core.jl")
-include("src/baseline_solver.jl")
-# include("src/optimized_solver.jl")
+include(joinpath(@__DIR__, "interfaces.jl"))
+include(joinpath(@__DIR__, "io_utils.jl"))
+include(joinpath(@__DIR__, "algorithm", "charm_core.jl"))
+include(joinpath(@__DIR__, "algorithm", "baseline_solver.jl"))
+# include(joinpath(@__DIR__, "algorithm", "optimized_solver.jl"))
 
 function print_usage()
     println("""
     CHARM Frequent Closed Itemset Mining - CLI
 
     Usage:
-      julia main.jl --input <path> --minsup <threshold> [--output <path>] [--algo <name>]
+      julia src/main.jl --input <path> --minsup <threshold> [--output <path>] [--algo <name>]
 
     Options:
       -i, --input <path>        Path to input transaction file (SPMF .txt format) [Required]
@@ -67,7 +65,7 @@ function build_solver(algo_name::AbstractString)::AbstractCharmSolver
         if @isdefined(OptimizedCharmSolver)
             return OptimizedCharmSolver()
         else
-            error("NotImplementedError: OptimizedCharmSolver is not loaded yet (check src/optimized_solver.jl).")
+            error("NotImplementedError: OptimizedCharmSolver is not loaded yet (check src/algorithm/optimized_solver.jl).")
         end
     else
         error("ArgumentError: Unsupported --algo '$algo_name'. Choose 'baseline' or 'optimized'.")
@@ -101,4 +99,6 @@ function main()
     println("[$(typeof(solver))] Transactions: $(solver.num_transactions) | MinSup Count: $(solver.minsup_count) | Closed Itemsets: $(length(solver.closed_itemsets)) | Time: $(elapsed_ms) ms")
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
