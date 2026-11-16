@@ -2,7 +2,7 @@ include(joinpath(@__DIR__, "interfaces.jl"))
 include(joinpath(@__DIR__, "io_utils.jl"))
 include(joinpath(@__DIR__, "algorithm", "baseline_solver.jl"))
 include(joinpath(@__DIR__, "algorithm", "charm_core.jl"))
-# include(joinpath(@__DIR__, "algorithm", "optimized_solver.jl"))
+include(joinpath(@__DIR__, "algorithm", "optimized_solver.jl"))
 
 function print_usage()
     println("""
@@ -96,7 +96,7 @@ function main()
     save_spmf(solver, output_path)
 
     elapsed_ms = round(stats.time * 1000, digits=2)
-    println("[$(typeof(solver))] Transactions: $(solver.num_transactions) | MinSup Count: $(solver.minsup_count) | Closed Itemsets: $(length(solver.closed_itemsets)) | Time: $(elapsed_ms) ms")
+    println("[$(typeof(solver))] Transactions: $(solver.num_transactions) | MinSup Count: $(solver.minsup_count) | Closed Itemsets: $(length(solver.closed_itemsets)) | Time: $(elapsed_ms) ms | PeakRSS: $(round(Sys.maxrss() / 2^20, digits=1)) MB")
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

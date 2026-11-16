@@ -1,2 +1,4 @@
 *.jar
 output.txt
+__pycache__/
+results/
