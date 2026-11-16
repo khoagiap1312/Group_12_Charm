@@ -155,9 +155,9 @@ function fit!(solver::BaselineCharmSolver, transactions::Vector{Vector{Int}}, mi
 
     P = CharmNode{VectorTidset}[]
     for item in frequent_items
-    node = CharmNode{VectorTidset}([item], VectorTidset(item_tids[item]))
-    push!(P, node)
-end
+        node = CharmNode{VectorTidset}([item], VectorTidset(item_tids[item]))
+        push!(P, node)
+    end
 
     charm_extend!(solver, P)
     return solver

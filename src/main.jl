@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__, "interfaces.jl"))
 include(joinpath(@__DIR__, "io_utils.jl"))
-include(joinpath(@__DIR__, "algorithm", "charm_core.jl"))
 include(joinpath(@__DIR__, "algorithm", "baseline_solver.jl"))
+include(joinpath(@__DIR__, "algorithm", "charm_core.jl"))
 # include(joinpath(@__DIR__, "algorithm", "optimized_solver.jl"))
 
 function print_usage()
