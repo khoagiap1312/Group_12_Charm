@@ -1,7 +1,7 @@
 abstract type AbstractTidset end
 abstract type AbstractCharmSolver end
 
-const ClosedItemset = Tuple{Vector{Int}, Int}
+const ClosedItemset = Tuple{Vector{Int}, Int} #(các items, support)
 
 mutable struct CharmNode{T<:AbstractTidset}
     items::Vector{Int}
