@@ -18,7 +18,7 @@ function parse_spmf_output(filepath::AbstractString)::Dict{Vector{Int}, Int}
             items = sort!([parse(Int, tok) for tok in split(strip(parts[1]))])
             sup = parse(Int, strip(parts[2]))
             result[items] = sup
-        endSS
+        end
     end
     return result
 end
