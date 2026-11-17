@@ -93,6 +93,7 @@ function pick_random_patterns(n_patterns::Int, avg_pat_len::Int, n_items::Int, s
     min_path_len = min(2, max_pat_len)
 
     for i in 1:n_patterns
+        empty!(picked)
         pattern_size = clamp(rand_poisson(rng, avg_pat_len), min_path_len, max_pat_len)
 
 
@@ -141,7 +142,7 @@ end
 
 function generate_synthetic_length_dataset(
     T::Int,
-    cfg::SyntheticFIMConfig,
+    cfg::SyntheticFIMConfig;
     out_root::AbstractString = "data/benchmark/length")
 
     # Tạo danh sách patterns và trọng số cố định theo seed
