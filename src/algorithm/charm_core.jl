@@ -114,7 +114,7 @@ function charm_extend!(solver::AbstractCharmSolver, P::Vector{CharmNode{T}}) whe
 end
 
 
-function fit!(solver::BaselineCharmSolver, transactions::Vector{Vector{Int}}, minsup::Real)
+function fit!(solver::AbstractCharmSolver, transactions::Vector{Vector{Int}}, minsup::Real)
     empty!(solver.closed_itemsets) #clear tập đóng
     empty!(solver.hash_table) #clear hash_table
 
@@ -153,10 +153,10 @@ function fit!(solver::BaselineCharmSolver, transactions::Vector{Vector{Int}}, mi
         return solver
     end
 
-    P = CharmNode{VectorTidset}[]
+    T = typeof(create_tidset(solver, Int[], num_tx)) # kiểu tidset của solver (Vector / Bitset)
+    P = CharmNode{T}[]
     for item in frequent_items
-        node = CharmNode{VectorTidset}([item], VectorTidset(item_tids[item]))
-        push!(P, node)
+        push!(P, CharmNode{T}([item], create_tidset(solver, item_tids[item], num_tx)))
     end
 
     charm_extend!(solver, P)
