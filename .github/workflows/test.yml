@@ -1,0 +1,42 @@
+name: Automated Testing & Correctness Verification
+
+on:
+  push:
+    branches: [ main, core_algorithm, phase2, optimized ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Julia Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 2. Set up Java JDK (for SPMF reference)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 3. Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.10'
+
+      - name: 4. Install Project Dependencies
+        shell: bash
+        run: |
+          julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
+      - name: 5. Run Unit Tests
+        shell: bash
+        run: |
+          julia --project=. tests/test_unit.jl
+
+      - name: 6. Run Automated Correctness Tests (5 Datasets vs SPMF)
+        shell: bash
+        run: |
+          julia --project=. tests/test_correctness.jl

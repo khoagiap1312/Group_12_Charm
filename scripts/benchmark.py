@@ -8,7 +8,7 @@ import csv, os, re, subprocess, sys, tempfile, time
 import psutil
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-JAR = os.path.join(ROOT, "tools", "spmf.jar")
+JAR = os.path.join(ROOT, "tests", "spmf.jar")
 MAIN = os.path.join(ROOT, "src", "main.jl")
 
 def cmd(engine, inp, out, minsup):
