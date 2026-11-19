@@ -16,6 +16,7 @@ function print_usage()
       -m, --minsup <threshold>  Minimum support: float in (0, 1] for relative or int >= 1 for absolute [Required]
       -o, --output <path>       Path to output file (default: "output.txt")
       -a, --algo <name>         Solver implementation: "baseline" or "optimized" (default: "baseline")
+      -w, --warmup <0|1>        1 = chạy thử trên vài giao dịch trước khi bấm giờ để loại thời gian JIT (default: 0)
       -h, --help                Show this help message and exit
     """)
 end
@@ -26,7 +27,8 @@ function parse_cli_args(args::Vector{String})::Dict{String, String}
         "-i" => "input",  "--input"  => "input",
         "-m" => "minsup", "--minsup" => "minsup",
         "-o" => "output", "--output" => "output",
-        "-a" => "algo",   "--algo"   => "algo"
+        "-a" => "algo",   "--algo"   => "algo",
+        "-w" => "warmup", "--warmup" => "warmup"
     )
 
     i = 1
@@ -92,6 +94,9 @@ function main()
     solver = build_solver(algo_name)
 
     transactions = read_spmf_transactions(input_path)
+    if get(opts, "warmup", "0") == "1" # biên dịch trước để Time không chứa JIT
+        fit!(build_solver(algo_name), transactions[1:min(200, length(transactions))], 0.5)
+    end
     stats = @timed fit!(solver, transactions, minsup)
     save_spmf(solver, output_path)
 
