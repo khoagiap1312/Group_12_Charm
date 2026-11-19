@@ -234,7 +234,7 @@ end
             b = make_bitset([2, 3, 6, 65, 90], num_tx)
             c = make_bitset([11, 12], num_tx)
             empty_ts = make_bitset(Int[], num_tx)
-            # Giao có phần tử chung (bao gồm cả chunk thứ 2 là 65)
+            # Giao có phần tử chung 
             @test tid_intersect(a, b) == make_bitset([3, 65], num_tx)
             @test length(tid_intersect(a, b)) == 2
             # Giao rời rạc
@@ -275,6 +275,79 @@ end
                 d_base = Dict(sort(k) => v for (k, v) in base_solver.closed_itemsets)
                 d_opt  = Dict(sort(k) => v for (k, v) in opt_solver.closed_itemsets)
                 @test d_base == d_opt
+            end
+        end
+    end
+
+    # 4. Edge Cases & Corner Cases
+    @testset verbose=true "Edge Cases & Corner Cases" begin
+        # 4.1 dataset rỗng
+        @testset "Empty dataset" begin
+            empty_txs = Vector{Int}[]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, empty_txs, 2)
+                @test isempty(solver.closed_itemsets)
+                @test solver.num_transactions == 0
+
+                solver_rel = SolverType()
+                fit!(solver_rel, empty_txs, 0.5)
+                @test isempty(solver_rel.closed_itemsets)
+            end
+        end
+
+        # 4.2 1 transaction
+        @testset "Single transaction" begin
+            single_tx = [[10, 20, 30]]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, single_tx, 1)
+                @test length(solver.closed_itemsets) == 1
+                @test Set(solver.closed_itemsets[1][1]) == Set([10, 20, 30])
+                @test solver.closed_itemsets[1][2] == 1
+            end
+        end
+
+        # 4.3 100% minsup
+        @testset "Minsup 100%" begin
+            txs = [
+                [1, 2, 3],
+                [2, 3, 4],
+                [2, 3, 5]
+            ]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, txs, 1.0)
+                # Chỉ có {2, 3} xuất hiện trong cả 3 giao dịch
+                @test length(solver.closed_itemsets) == 1
+                @test Set(solver.closed_itemsets[1][1]) == Set([2, 3])
+                @test solver.closed_itemsets[1][2] == 3
+            end
+        end
+
+        # 4.4 không sorted item
+        @testset "Unsorted items in transactions" begin
+            unsorted_txs = [
+                [5, 2, 1],
+                [1, 5, 2],
+                [2, 1, 5]
+            ]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, unsorted_txs, 2)
+                @test length(solver.closed_itemsets) == 1
+                @test Set(solver.closed_itemsets[1][1]) == Set([1, 2, 5])
+                @test solver.closed_itemsets[1][2] == 3
+            end
+        end
+
+        # 4.5 Minsup cao hơn tổng transaction
+        @testset "Minsup exceeds transaction count" begin
+            txs = [[1, 2], [2, 3]]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, txs, 10)
+                @test isempty(solver.closed_itemsets)
             end
         end
     end

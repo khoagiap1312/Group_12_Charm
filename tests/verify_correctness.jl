@@ -1,5 +1,11 @@
 using Printf
 
+include(joinpath(@__DIR__, "..", "src", "interfaces.jl"))
+include(joinpath(@__DIR__, "..", "src", "io_utils.jl"))
+include(joinpath(@__DIR__, "..", "src", "algorithm", "baseline_solver.jl"))
+include(joinpath(@__DIR__, "..", "src", "algorithm", "optimized_solver.jl"))
+include(joinpath(@__DIR__, "..", "src", "algorithm", "charm_core.jl"))
+
 struct VerificationResult
     dataset::String
     minsup::String
@@ -71,7 +77,6 @@ function verify_pair(dataset::String, minsup::String, solver::String, spmf_path:
     total_union = length(union(spmf_keys, ours_keys))
     match_rate = total_union == 0 ? 100.0 : (exact_matches / total_union) * 100.0
 
-    # If there are discrepancies, print detailed diagnostics for root-cause analysis
     if match_rate < 100.0 || ours_dups > 0
         println("\n[DISCREPANCY WARNING] $dataset ($minsup) - $solver:")
         ours_dups > 0 && println("  - Output duplicates: $ours_dups")
@@ -97,29 +102,79 @@ function verify_pair(dataset::String, minsup::String, solver::String, spmf_path:
     )
 end
 
+function run_solver_and_save!(solver_name::String, data_path::String, minsup::Real, out_path::String)
+    println("  -> Running $solver_name on $(basename(data_path)) with minsup=$minsup...")
+    txs = read_spmf_transactions(data_path)
+    solver = solver_name == "Baseline" ? BaselineCharmSolver() : OptimizedCharmSolver()
+    fit!(solver, txs, minsup)
+    save_spmf(solver, out_path)
+end
+
 function main()
     test_cases = [
-        ("mushrooms", "25%", "Baseline",  "tests/spmf_mushrooms_25.txt",  "tests/ours_mushrooms_25_base.txt"),
-        ("mushrooms", "25%", "Optimized", "tests/spmf_mushrooms_25.txt",  "tests/ours_mushrooms_25_opt.txt"),
-        ("chess",     "85%", "Baseline",  "tests/spmf_chess_85.txt",     "tests/ours_chess_85_base.txt"),
-        ("chess",     "85%", "Optimized", "tests/spmf_chess_85.txt",     "tests/ours_chess_85_opt.txt"),
-        ("accidents", "80%", "Baseline",  "tests/spmf_accidents_80.txt", "tests/ours_accidents_80_base.txt"),
-        ("accidents", "80%", "Optimized", "tests/spmf_accidents_80.txt", "tests/ours_accidents_80_opt.txt"),
-        ("retail",    "1%",  "Baseline",  "tests/spmf_retail_01.txt",    "tests/ours_retail_01_base.txt"),
-        ("retail",    "1%",  "Optimized", "tests/spmf_retail_01.txt",    "tests/ours_retail_01_opt.txt"),
+        ("mushrooms", 0.25, "25%", "Baseline",
+         joinpath(@__DIR__, "..", "data", "benchmark", "origin", "mushrooms.txt"),
+         joinpath(@__DIR__, "expected", "spmf_mushrooms_25.txt"),
+         joinpath(@__DIR__, "ours_mushrooms_25_base.txt")),
+        ("mushrooms", 0.25, "25%", "Optimized",
+         joinpath(@__DIR__, "..", "data", "benchmark", "origin", "mushrooms.txt"),
+         joinpath(@__DIR__, "expected", "spmf_mushrooms_25.txt"),
+         joinpath(@__DIR__, "ours_mushrooms_25_opt.txt")),
+        ("chess",     0.85, "85%", "Baseline",
+         joinpath(@__DIR__, "..", "data", "benchmark", "origin", "chess.txt"),
+         joinpath(@__DIR__, "expected", "spmf_chess_85.txt"),
+         joinpath(@__DIR__, "ours_chess_85_base.txt")),
+        ("chess",     0.85, "85%", "Optimized",
+         joinpath(@__DIR__, "..", "data", "benchmark", "origin", "chess.txt"),
+         joinpath(@__DIR__, "expected", "spmf_chess_85.txt"),
+         joinpath(@__DIR__, "ours_chess_85_opt.txt")),
+        ("accidents", 0.80, "80%", "Baseline",
+         joinpath(@__DIR__, "..", "data", "benchmark", "origin", "accidents.txt"),
+         joinpath(@__DIR__, "expected", "spmf_accidents_80.txt"),
+         joinpath(@__DIR__, "ours_accidents_80_base.txt")),
+        ("accidents", 0.80, "80%", "Optimized",
+         joinpath(@__DIR__, "..", "data", "benchmark", "origin", "accidents.txt"),
+         joinpath(@__DIR__, "expected", "spmf_accidents_80.txt"),
+         joinpath(@__DIR__, "ours_accidents_80_opt.txt")),
+        ("retail",    0.01, "1%",  "Baseline",
+         joinpath(@__DIR__, "..", "data", "benchmark", "origin", "retail.txt"),
+         joinpath(@__DIR__, "expected", "spmf_retail_01.txt"),
+         joinpath(@__DIR__, "ours_retail_01_base.txt")),
+        ("retail",    0.01, "1%",  "Optimized",
+         joinpath(@__DIR__, "..", "data", "benchmark", "origin", "retail.txt"),
+         joinpath(@__DIR__, "expected", "spmf_retail_01.txt"),
+         joinpath(@__DIR__, "ours_retail_01_opt.txt")),
     ]
+
+    skip_regen = "--no-regen" in ARGS
 
     println("="^96)
     @printf("%-11s | %-6s | %-9s | %-9s | %-9s | %-9s | %-12s | %-10s\n",
             "Dataset", "MinSup", "Solver", "SPMF Cnt", "Ours Cnt", "Matched", "Discrepancy", "Match Rate")
     println("-"^96)
 
-    for (ds, ms, solver, spmf_f, ours_f) in test_cases
-        if !isfile(spmf_f) || !isfile(ours_f)
-            @printf("%-11s | %-6s | %-9s | %-47s\n", ds, ms, solver, "[Skipped - output file not found]")
+    for (ds, ms_val, ms_label, solver, data_f, spmf_f, ours_f) in test_cases
+        if !isfile(spmf_f)
+            @printf("%-11s | %-6s | %-9s | %-47s\n", ds, ms_label, solver, "[Expected SPMF file not found]")
             continue
         end
-        r = verify_pair(ds, ms, solver, spmf_f, ours_f)
+
+        # Tự động chạy lại solver nếu chưa có file ours_*
+        if !skip_regen || !isfile(ours_f)
+            if isfile(data_f)
+                run_solver_and_save!(solver, data_f, ms_val, ours_f)
+            else
+                @printf("%-11s | %-6s | %-9s | %-47s\n", ds, ms_label, solver, "[Dataset not found: $data_f]")
+                continue
+            end
+        end
+
+        if !isfile(ours_f)
+            @printf("%-11s | %-6s | %-9s | %-47s\n", ds, ms_label, solver, "[Output file not found: $ours_f]")
+            continue
+        end
+
+        r = verify_pair(ds, ms_label, solver, spmf_f, ours_f)
         disc = r.missing_count + r.extra_count + r.wrong_sup_count + r.duplicate_count
         @printf("%-11s | %-6s | %-9s | %-9d | %-9d | %-9d | %-12d | %9.2f%%\n",
                 r.dataset, r.minsup, r.solver, r.spmf_count, r.ours_count, r.exact_matches, disc, r.match_rate)

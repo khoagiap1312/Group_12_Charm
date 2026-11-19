@@ -13,10 +13,18 @@ function print_usage()
 
     Options:
       -i, --input <path>        Path to input transaction file (SPMF .txt format) [Required]
-      -m, --minsup <threshold>  Minimum support: float in (0, 1] for relative or int >= 1 for absolute [Required]
+      -m, --minsup <threshold>  Minimum support [Required]. Supports 3 formats:
+                                  • Percentage (SPMF-style): e.g. "40%", "33.3%" (0% < m <= 100%)
+                                  • Relative fraction:       e.g. 0.4, 0.33 (0.0 < m <= 1.0)
+                                  • Absolute count:          e.g. 3, 10 (integer >= 1)
       -o, --output <path>       Path to output file (default: "output.txt")
       -a, --algo <name>         Solver implementation: "baseline" or "optimized" (default: "baseline")
       -h, --help                Show this help message and exit
+
+    Examples:
+      julia src/main.jl -i data/toy/sample.txt -m 40% -a optimized
+      julia src/main.jl -i data/toy/sample.txt -m 0.4 -o result.txt
+      julia src/main.jl -i data/toy/sample.txt -m 3 -a baseline
     """)
 end
 
@@ -44,17 +52,23 @@ function parse_cli_args(args::Vector{String})::Dict{String, String}
 end
 
 function parse_minsup(raw::AbstractString)::Real
-    if occursin('.', raw) || occursin('e', lowercase(raw))
-        val = tryparse(Float64, raw)
+    s = strip(raw)
+    if endswith(s, "%")
+        val = tryparse(Float64, s[1:end-1])
+        (val === nothing || val <= 0.0 || val > 100.0) &&
+            error("ArgumentError: Percentage minsup must be in (0%, 100%], got '$raw'.")
+        return val / 100.0
+    end
+    if occursin('.', s) || occursin('e', lowercase(s))
+        val = tryparse(Float64, s)
         (val === nothing || val <= 0.0 || val > 1.0) &&
-            error("ArgumentError: Relative --minsup must be a float in (0.0, 1.0], got '$raw'.")
-        return val
-    else
-        val = tryparse(Int, raw)
-        (val === nothing || val < 1) &&
-            error("ArgumentError: Absolute --minsup must be an integer >= 1, got '$raw'.")
+            error("ArgumentError: Relative minsup must be a float in (0.0, 1.0], got '$raw'.")
         return val
     end
+    val = tryparse(Int, s)
+    (val === nothing || val < 1) &&
+        error("ArgumentError: Absolute minsup must be an integer >= 1, got '$raw'.")
+    return val
 end
 
 function build_solver(algo_name::AbstractString)::AbstractCharmSolver
@@ -77,28 +91,25 @@ function main()
         print_usage()
         return
     end
-
-    opts = parse_cli_args(ARGS)
-    input_path = get(opts, "input") do
-        error("ArgumentError: Missing required argument --input <path>.")
+    try
+        opts = parse_cli_args(ARGS)
+        input_path = get(opts, "input") do
+            error("ArgumentError: Missing required parameter --input <path>.")
+        end
+        minsup_raw = get(opts, "minsup") do
+            error("ArgumentError: Missing required parameter --minsup <threshold>.")
+        end
+        output_path = get(opts, "output", "output.txt")
+        algo_name   = get(opts, "algo", "baseline")
+        minsup = parse_minsup(minsup_raw)
+        solver = build_solver(algo_name)
+        transactions = read_spmf_transactions(input_path)
+        stats = @timed fit!(solver, transactions, minsup)
+        save_spmf(solver, output_path)
+        elapsed_ms = round(stats.time * 1000, digits=2)
+        println("[$(typeof(solver))] Transactions: $(solver.num_transactions) | MinSup Count: $(solver.minsup_count) | Closed Itemsets: $(length(solver.closed_itemsets)) | Time: $(elapsed_ms) ms | PeakRSS: $(round(Sys.maxrss() / 2^20, digits=1)) MB")
+    catch e
+        println(stderr, "Error: ", e isa ErrorException ? e.msg : sprint(showerror, e))
+        exit(1)
     end
-    minsup_raw = get(opts, "minsup") do
-        error("ArgumentError: Missing required argument --minsup <threshold>.")
-    end
-    output_path = get(opts, "output", "output.txt")
-    algo_name   = get(opts, "algo", "baseline")
-
-    minsup = parse_minsup(minsup_raw)
-    solver = build_solver(algo_name)
-
-    transactions = read_spmf_transactions(input_path)
-    stats = @timed fit!(solver, transactions, minsup)
-    save_spmf(solver, output_path)
-
-    elapsed_ms = round(stats.time * 1000, digits=2)
-    println("[$(typeof(solver))] Transactions: $(solver.num_transactions) | MinSup Count: $(solver.minsup_count) | Closed Itemsets: $(length(solver.closed_itemsets)) | Time: $(elapsed_ms) ms | PeakRSS: $(round(Sys.maxrss() / 2^20, digits=1)) MB")
-end
-
-if abspath(PROGRAM_FILE) == @__FILE__
-    main()
 end

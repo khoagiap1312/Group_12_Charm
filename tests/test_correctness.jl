@@ -69,8 +69,8 @@ end
                 spmf_dict = parse_spmf_file(tmp_spmf_out)
                 rm(tmp_spmf_out, force=true)
             else
-                #đọc file SPMF reference đã sinh sẵn trong tests/ 
-                ref_file = joinpath(@__DIR__, "spmf_output_$name.txt")
+                # Đọc file SPMF reference đã sinh sẵn trong tests/expected/
+                ref_file = joinpath(@__DIR__, "expected", "spmf_output_$name.txt")
                 spmf_dict = parse_spmf_file(ref_file)
             end
 
