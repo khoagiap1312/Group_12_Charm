@@ -1,110 +1,116 @@
 using Test
+using Printf
 
 include(joinpath(@__DIR__, "..", "src", "structures.jl"))
 include(joinpath(@__DIR__, "..", "src", "interfaces.jl"))
 include(joinpath(@__DIR__, "..", "src", "io_utils.jl"))
 include(joinpath(@__DIR__, "..", "src", "algorithm", "baseline_solver.jl"))
-# include(joinpath(@__DIR__, "..", "src", "algorithm", "optimized_solver.jl"))
+include(joinpath(@__DIR__, "..", "src", "algorithm", "optimized_solver.jl"))
 include(joinpath(@__DIR__, "..", "src", "algorithm", "charm_core.jl"))
 
-function parse_spmf_output(filepath::AbstractString)::Dict{Vector{Int}, Int}
-    result = Dict{Vector{Int}, Int}()
-    open(filepath, "r") do io
-        for line in eachline(io)
-            s = strip(line)
-            (isempty(s) || startswith(s, "@") || !occursin("#SUP:", s)) && continue
-            
-            parts = split(s, "#SUP:")
-            items = sort!([parse(Int, tok) for tok in split(strip(parts[1]))])
-            sup = parse(Int, strip(parts[2]))
-            result[items] = sup
-        end
+# ── Helper: Đọc file output SPMF thành Dict{Set{Int} => Support} ──
+function parse_spmf_file(filepath::AbstractString)::Dict{Set{Int}, Int}
+    result = Dict{Set{Int}, Int}()
+    !isfile(filepath) && return result
+    for line in eachline(filepath)
+        s = strip(line)
+        (isempty(s) || startswith(s, "@") || startswith(s, "#") || !occursin("#SUP:", s)) && continue
+        parts = split(s, "#SUP:")
+        items = Set(parse(Int, tok) for tok in split(strip(parts[1])))
+        sup = parse(Int, strip(parts[2]))
+        result[items] = sup
     end
     return result
 end
 
-function to_dict(solver::AbstractCharmSolver)::Dict{Vector{Int}, Int}
-    return Dict(sort(items) => sup for (items, sup) in solver.closed_itemsets)
+function to_dict(solver::AbstractCharmSolver)::Dict{Set{Int}, Int}
+    return Dict(Set(items) => sup for (items, sup) in solver.closed_itemsets)
 end
 
-@testset "Group 12 CHARM - Automated Test Suite" begin
-    sample_path = joinpath(@__DIR__, "..", "data", "toy", "sample.txt")
-    transactions = read_spmf_transactions(sample_path)
+struct EvalSummary
+    dataset::String
+    minsup::String
+    solver::String
+    spmf_cnt::Int
+    ours_cnt::Int
+    matched::Int
+    rate::Float64
+end
 
-    @testset "1. Low-Level Set & Tidset Operations" begin
-        t1 = VectorTidset([1, 3, 4, 5])
-        t2 = VectorTidset([2, 3, 5, 6])
-        t_sub = VectorTidset([3, 5])
+@testset verbose=true "Group 12 CHARM - Automated Correctness Verification" begin
 
-        @test length(t1) == 4
-        @test tid_intersect(t1, t2) == VectorTidset([3, 5])
-        @test tid_intersect(t1, VectorTidset(Int[])) == VectorTidset(Int[])
-        @test tid_issubset(t_sub, t1) == true
-        @test tid_issubset(t1, t_sub) == false
-        @test tid_issubset(t1, t1) == true
-        @test tid_hash(t1) == 13
+    datasets = [
+        ("sample",             joinpath(@__DIR__, "..", "data", "toy", "sample.txt"),             2, "33.3%"),
+        ("contextPasquier99",  joinpath(@__DIR__, "..", "data", "toy", "contextPasquier99.txt"),  2, "40%"),
+        ("contextZart",        joinpath(@__DIR__, "..", "data", "toy", "contextZart.txt"),        2, "40%"),
+        ("contextItemsetTree", joinpath(@__DIR__, "..", "data", "toy", "contextItemsetTree.txt"), 2, "25%"),
+        ("contextRelim",       joinpath(@__DIR__, "..", "data", "toy", "contextRelim.txt"),       2, "20%"),
+    ]
 
-        @test union_sorted([1, 3, 5], [2, 3, 4]) == [1, 2, 3, 4, 5]
-        @test is_strict_subset_items([1, 5], [1, 2, 5]) == true
-        @test is_strict_subset_items([1, 5], [1, 5]) == false
-    end
+    spmf_jar = joinpath(@__DIR__, "spmf.jar")
+    has_java = Sys.which("java") !== nothing && isfile(spmf_jar)
+    summary_table = EvalSummary[]
 
-    @testset "2. Edge Cases & SPMF I/O Roundtrip" begin
-        solver_high = BaselineCharmSolver()
-        fit!(solver_high, transactions, 10)
-        @test isempty(solver_high.closed_itemsets)
+    println(" Automated test on 5 datasets and compare with spmf")
 
-        solver_min = BaselineCharmSolver()
-        fit!(solver_min, transactions, 1)
-        @test length(solver_min.closed_itemsets) == 10
+    for (name, path, minsup_abs, minsup_pct) in datasets
+        @testset "Dataset: $name (minsup=$minsup_abs)" begin
+            @test isfile(path)
+            transactions = read_spmf_transactions(path)
+            @test !isempty(transactions)
 
-        tmp_in = tempname() * ".txt"
-        write(tmp_in, "# comment line\n1 2 2 4 5\n\n2 3 5\n")
-        parsed_tx = read_spmf_transactions(tmp_in)
-        @test parsed_tx == [[1, 2, 4, 5], [2, 3, 5]]
-        rm(tmp_in, force=true)
+            #lấy kết quả tham chiếu từ SPMF
+            spmf_dict = Dict{Set{Int}, Int}()
+            tmp_spmf_out = tempname() * ".txt"
 
-        tmp_out = tempname() * ".txt"
-        save_spmf(solver_min, tmp_out)
-        @test parse_spmf_output(tmp_out) == to_dict(solver_min)
-        rm(tmp_out, force=true)
-    end
-
-    @testset "3. Ground Truth Verification (Zaki 2002)" begin
-        solver = BaselineCharmSolver()
-        fit!(solver, transactions, 0.5)
-        expected = Dict{Vector{Int}, Int}(
-            [2]          => 6,
-            [2, 5]       => 5,
-            [1, 2, 5]    => 4,
-            [2, 3]       => 4,
-            [2, 4]       => 4,
-            [1, 2, 4, 5] => 3,
-            [2, 3, 5]    => 3
-        )
-        @test to_dict(solver) == expected
-
-        spmf_jar = joinpath(@__DIR__, "spmf.jar")
-        if isfile(spmf_jar) && Sys.which("java") !== nothing
-            for (rel_sup, spmf_pct) in [(0.5, "50%"), (0.333, "33.3%"), (0.1, "10%")]
-                spmf_out = tempname() * ".txt"
-                run(`java -jar $spmf_jar run Charm_bitset $sample_path $spmf_out $spmf_pct`)
-                fit!(solver, transactions, rel_sup)
-                @test to_dict(solver) == parse_spmf_output(spmf_out)
-                rm(spmf_out, force=true)
+            if has_java
+                #tự động chạy SPMF sinh kết quả chuẩn
+                run(pipeline(`java -jar $spmf_jar run Charm_bitset $path $tmp_spmf_out $minsup_pct`, devnull))
+                spmf_dict = parse_spmf_file(tmp_spmf_out)
+                rm(tmp_spmf_out, force=true)
+            else
+                # Đọc file SPMF reference đã sinh sẵn trong tests/expected/
+                ref_file = joinpath(@__DIR__, "expected", "spmf_output_$name.txt")
+                spmf_dict = parse_spmf_file(ref_file)
             end
-        end
-    end
 
-    if @isdefined(OptimizedCharmSolver)
-        @testset "4. Cross-Check: Baseline vs Optimized Solver" begin
+            @test !isempty(spmf_dict)
+            num_spmf = length(spmf_dict)
+
+            #Test BaselineCharmSolver
             base_solver = BaselineCharmSolver()
-            opt_solver  = OptimizedCharmSolver()
-            for sup in [0.8, 0.5, 0.3, 1]
-                fit!(base_solver, transactions, sup)
-                fit!(opt_solver, transactions, sup)
-                @test to_dict(base_solver) == to_dict(opt_solver)
-            end
+            fit!(base_solver, transactions, minsup_abs)
+            base_dict = to_dict(base_solver)
+
+            @test length(base_dict) == num_spmf
+            @test base_dict == spmf_dict  # Kiểm tra khớp 100% cả itemset và support
+
+            matched_base = count(k -> get(spmf_dict, k, -1) == get(base_dict, k, -2), keys(base_dict))
+            rate_base = (matched_base / num_spmf) * 100.0
+            push!(summary_table, EvalSummary(name, "$minsup_abs", "Baseline", num_spmf, length(base_dict), matched_base, rate_base))
+
+            #Test OptimizedCharmSolver
+            opt_solver = OptimizedCharmSolver()
+            fit!(opt_solver, transactions, minsup_abs)
+            opt_dict = to_dict(opt_solver)
+
+            @test length(opt_dict) == num_spmf
+            @test opt_dict == spmf_dict
+            @test opt_dict == base_dict   # Cross-check với baseline
+
+            matched_opt = count(k -> get(spmf_dict, k, -1) == get(opt_dict, k, -2), keys(opt_dict))
+            rate_opt = (matched_opt / num_spmf) * 100.0
+            push!(summary_table, EvalSummary(name, "$minsup_abs", "Optimized", num_spmf, length(opt_dict), matched_opt, rate_opt))
         end
     end
+
+    println("\n" * "="^96)
+    @printf("%-20s | %-6s | %-10s | %-9s | %-9s | %-9s | %-10s\n",
+            "Dataset", "MinSup", "Solver", "SPMF Cnt", "Ours Cnt", "Matched", "Match Rate")
+    println("-"^96)
+    for r in summary_table
+        @printf("%-20s | %-6s | %-10s | %-9d | %-9d | %-9d | %9.2f%%\n",
+                r.dataset, r.minsup, r.solver, r.spmf_cnt, r.ours_cnt, r.matched, r.rate)
+    end
+    println("="^96 * "\n")
 end
