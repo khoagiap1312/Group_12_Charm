@@ -7,8 +7,9 @@
 #
 # Quy ước đo:
 #   - Mỗi lần chạy là một tiến trình riêng; Julia luôn --warmup 1 để loại thời gian JIT.
-#   - time_ms: thời gian nội bộ của chương trình. Julia = fit! sau warm-up (không gồm đọc file);
-#     SPMF = "Total time" do SPMF tự báo (không gồm khởi động JVM).
+#   - time_ms: thời gian nội bộ của chương trình, dùng để so với SPMF. Julia = đọc file + fit! + ghi file
+#     (sau warm-up); SPMF = "Total time" do SPMF tự báo (gồm đọc DB và ghi kết quả, không gồm khởi động JVM).
+#   - fit_ms: chỉ riêng thuật toán (fit!) của Julia, để phân tích Baseline vs Optimized. SPMF để trống.
 #   - peak_mb: Julia = Sys.maxrss() của chính tiến trình đó (gồm ~200 MB nền của runtime);
 #     SPMF = "Maximum memory usage" SPMF tự báo (heap JVM, KHÔNG cùng thước đo với RSS của Julia).
 #     Vì vậy so RAM giữa Baseline và Optimized là chính.
@@ -22,8 +23,8 @@ const RESULTS = joinpath(ROOT, "results")
 const ENGINES = ("spmf", "baseline", "optimized")
 const DATASETS = Dict("chess" => "chess.txt", "mushroom" => "mushrooms.txt",
                       "retail" => "retail.txt", "t10i4d100k" => "T10I4D100K.txt")
-const RAW_HEAD = "dataset,minsup,engine,run,status,time_ms,wall_s,peak_mb,n_closed"
-const SUM_HEAD = "dataset,minsup,engine,status,time_ms,wall_s,peak_mb,n_closed"
+const RAW_HEAD = "dataset,minsup,engine,run,status,time_ms,fit_ms,wall_s,peak_mb,n_closed"
+const SUM_HEAD = "dataset,minsup,engine,status,time_ms,fit_ms,wall_s,peak_mb,n_closed"
 
 function engine_cmd(engine, inp, out, minsup)
     if engine == "spmf"
@@ -38,6 +39,7 @@ end
 mutable struct RunResult
     status::String # ok | timeout | error
     time_ms::Union{Float64,Nothing}
+    fit_ms::Union{Float64,Nothing}
     wall_s::Float64
     peak_mb::Union{Float64,Nothing}
     n_closed::Union{Int,Nothing}
@@ -64,7 +66,7 @@ function run_once(engine, inp, minsup; timeout=Inf)
     wait(proc)
     wall = round(time() - t0, digits=3)
     log = fetch(reader)
-    r = RunResult(status, nothing, wall, nothing, nothing, out)
+    r = RunResult(status, nothing, nothing, wall, nothing, nothing, out)
     if status == "ok" && proc.exitcode != 0
         r.status = "error"
         return r
@@ -75,7 +77,8 @@ function run_once(engine, inp, minsup; timeout=Inf)
         r.peak_mb = firstnum(r"Maximum memory usage : ([\d.]+) mb", log)
         n = firstnum(r"closed itemsets count : (\d+)", log)
     else
-        r.time_ms = firstnum(r"Time: ([\d.]+) ms", log)
+        r.time_ms = firstnum(r"Total: ([\d.]+) ms", log)
+        r.fit_ms = firstnum(r"Time: ([\d.]+) ms", log)
         r.peak_mb = firstnum(r"PeakRSS: ([\d.]+) MB", log)
         n = firstnum(r"Closed Itemsets: (\d+)", log)
     end
@@ -120,13 +123,13 @@ function bench(name, minsups; repeat=3, timeout=120.0)
     raw, summary = String[], String[]
     for ms in sort(minsups; rev=true), eng in ENGINES
         if eng in dead
-            push!(summary, join([name, ms, eng, "skipped", "", "", "", ""], ','))
+            push!(summary, join([name, ms, eng, "skipped", "", "", "", "", ""], ','))
             continue
         end
         runs = RunResult[]
         for i in 1:repeat
             r = run_once(eng, inp, ms; timeout)
-            line = join([name, ms, eng, i, r.status, fmt(r.time_ms), r.wall_s, fmt(r.peak_mb), fmt(r.n_closed)], ',')
+            line = join([name, ms, eng, i, r.status, fmt(r.time_ms), fmt(r.fit_ms), r.wall_s, fmt(r.peak_mb), fmt(r.n_closed)], ',')
             push!(raw, line)
             println(line)
             if r.status != "ok"
@@ -137,9 +140,10 @@ function bench(name, minsups; repeat=3, timeout=120.0)
             push!(runs, r)
         end
         if runs[1].status != "ok"
-            push!(summary, join([name, ms, eng, runs[1].status, "", "", "", ""], ','))
+            push!(summary, join([name, ms, eng, runs[1].status, "", "", "", "", ""], ','))
         else
-            push!(summary, join([name, ms, eng, "ok", med([r.time_ms for r in runs]), med([r.wall_s for r in runs]),
+            push!(summary, join([name, ms, eng, "ok", med([r.time_ms for r in runs]),
+                                 eng == "spmf" ? "" : med([r.fit_ms for r in runs]), med([r.wall_s for r in runs]),
                                  med([r.peak_mb for r in runs]), runs[1].n_closed], ','))
         end
     end

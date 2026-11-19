@@ -93,15 +93,22 @@ function main()
     minsup = parse_minsup(minsup_raw)
     solver = build_solver(algo_name)
 
-    transactions = read_spmf_transactions(input_path)
-    if get(opts, "warmup", "0") == "1" # biên dịch trước để Time không chứa JIT
-        fit!(build_solver(algo_name), transactions[1:min(200, length(transactions))], 0.5)
+    if get(opts, "warmup", "0") == "1" # biên dịch trước (đọc, fit!, ghi) để thời gian đo không chứa JIT
+        warm_tx = read_spmf_transactions(input_path)
+        warm = build_solver(algo_name)
+        fit!(warm, warm_tx[1:min(200, length(warm_tx))], 0.5)
+        warm_out = tempname()
+        save_spmf(warm, warm_out)
+        rm(warm_out, force=true)
     end
+    read_stats = @timed read_spmf_transactions(input_path)
+    transactions = read_stats.value
     stats = @timed fit!(solver, transactions, minsup)
-    save_spmf(solver, output_path)
+    write_stats = @timed save_spmf(solver, output_path)
 
     elapsed_ms = round(stats.time * 1000, digits=2)
-    println("[$(typeof(solver))] Transactions: $(solver.num_transactions) | MinSup Count: $(solver.minsup_count) | Closed Itemsets: $(length(solver.closed_itemsets)) | Time: $(elapsed_ms) ms | PeakRSS: $(round(Sys.maxrss() / 2^20, digits=1)) MB")
+    total_ms = round((read_stats.time + stats.time + write_stats.time) * 1000, digits=2)
+    println("[$(typeof(solver))] Transactions: $(solver.num_transactions) | MinSup Count: $(solver.minsup_count) | Closed Itemsets: $(length(solver.closed_itemsets)) | Read: $(round(read_stats.time * 1000, digits=2)) ms | Time: $(elapsed_ms) ms | Write: $(round(write_stats.time * 1000, digits=2)) ms | Total: $(total_ms) ms | PeakRSS: $(round(Sys.maxrss() / 2^20, digits=1)) MB")
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
