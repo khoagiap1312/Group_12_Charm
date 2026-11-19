@@ -3,6 +3,7 @@ using Test
 include(joinpath(@__DIR__, "..", "src", "interfaces.jl"))
 include(joinpath(@__DIR__, "..", "src", "io_utils.jl"))
 include(joinpath(@__DIR__, "..", "src", "algorithm", "baseline_solver.jl"))
+include(joinpath(@__DIR__, "..", "src", "algorithm", "optimized_solver.jl"))
 include(joinpath(@__DIR__, "..", "src", "algorithm", "charm_core.jl"))
 
 @testset verbose=true "Unit test for baseline" begin
@@ -178,3 +179,175 @@ include(joinpath(@__DIR__, "..", "src", "algorithm", "charm_core.jl"))
         end
     end
 end
+
+   @testset verbose=true "BitsetTidset & Optimized Solver" begin
+        # Helper tạo BitsetTidset nhanh cho test
+        function make_bitset(tids::Vector{Int}, num_tx::Int=10)
+            bits = falses(num_tx)
+            for t in tids
+                bits[t] = true
+            end
+            return BitsetTidset(bits, length(tids))
+        end
+        # 3.1 Test Constructor & create_tidset
+        @testset "Constructor & create_tidset" begin
+            solver = OptimizedCharmSolver()
+            @test solver.minsup_count == 0
+            @test solver.num_transactions == 0
+            @test isempty(solver.closed_itemsets)
+            @test isempty(solver.hash_table)
+            num_tx = 100
+            ts = create_tidset(solver, [1, 5, 8, 65], num_tx)
+            @test isa(ts, BitsetTidset)
+            @test length(ts) == 4
+            @test ts.bits[1] == true
+            @test ts.bits[5] == true
+            @test ts.bits[8] == true
+            @test ts.bits[65] == true
+            @test ts.bits[2] == false
+        end
+        # 3.2 Test Base.length & Base.:(==)
+        @testset "length & ==" begin
+            ts_empty = make_bitset(Int[])
+            ts1 = make_bitset([1, 3, 5])
+            ts2 = make_bitset([1, 3, 5])
+            ts3 = make_bitset([1, 3, 6])
+            @test length(ts_empty) == 0
+            @test length(ts1) == 3
+            @test ts1 == ts2
+            @test ts1 != ts3
+            @test ts1 != ts_empty
+        end
+        # 3.3 Test tid_hash
+        @testset "tid_hash" begin
+            ts1 = make_bitset([1, 2, 4])
+            ts2 = make_bitset([1, 2, 4])
+            ts3 = make_bitset([1, 2, 5])
+            @test isa(tid_hash(ts1), Int64)
+            @test tid_hash(ts1) == tid_hash(ts2)  # Cùng tidset phải cùng mã băm
+            @test tid_hash(ts1) != tid_hash(ts3)  # Khác tidset thì băm khác
+        end
+        # 3.4 Test tid_intersect
+        @testset "tid_intersect" begin
+            num_tx = 100 # Test vượt ngưỡng 64 bit (2 chunks) để đảm bảo bitwise đa chunk hoạt động chuẩn
+            a = make_bitset([1, 3, 5, 65, 80], num_tx)
+            b = make_bitset([2, 3, 6, 65, 90], num_tx)
+            c = make_bitset([11, 12], num_tx)
+            empty_ts = make_bitset(Int[], num_tx)
+            # Giao có phần tử chung 
+            @test tid_intersect(a, b) == make_bitset([3, 65], num_tx)
+            @test length(tid_intersect(a, b)) == 2
+            # Giao rời rạc
+            @test tid_intersect(a, c) == empty_ts
+            @test length(tid_intersect(a, c)) == 0
+            # Giao với rỗng và giao với chính nó
+            @test tid_intersect(a, empty_ts) == empty_ts
+            @test tid_intersect(a, a) == a
+        end
+        # 3.5 Test tid_issubset
+        @testset "tid_issubset" begin
+            num_tx = 100
+            sub = make_bitset([2, 65], num_tx)
+            parent = make_bitset([1, 2, 3, 65, 80], num_tx)
+            other = make_bitset([2, 65, 99], num_tx)
+            empty_ts = make_bitset(Int[], num_tx)
+            @test tid_issubset(sub, parent) == true
+            @test tid_issubset(parent, sub) == false
+            @test tid_issubset(sub, sub) == true
+            @test tid_issubset(other, parent) == false
+            @test tid_issubset(empty_ts, parent) == true
+        end
+        # 3.6 Test fit! so khớp với Baseline trên dữ liệu mock
+        @testset "Cross-check fit! Baseline vs Optimized" begin
+            txs = [
+                [1, 2, 4, 5],
+                [2, 3, 5],
+                [1, 2, 4, 5],
+                [1, 2, 3, 5],
+                [1, 2, 3, 4, 5],
+                [2, 3, 4]
+            ]
+            for ms in [0.5, 0.33, 2, 3]
+                base_solver = BaselineCharmSolver()
+                opt_solver  = OptimizedCharmSolver()
+                fit!(base_solver, txs, ms)
+                fit!(opt_solver, txs, ms)
+                d_base = Dict(sort(k) => v for (k, v) in base_solver.closed_itemsets)
+                d_opt  = Dict(sort(k) => v for (k, v) in opt_solver.closed_itemsets)
+                @test d_base == d_opt
+            end
+        end
+    end
+
+    # 4. Edge Cases & Corner Cases
+    @testset verbose=true "Edge Cases & Corner Cases" begin
+        # 4.1 dataset rỗng
+        @testset "Empty dataset" begin
+            empty_txs = Vector{Int}[]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, empty_txs, 2)
+                @test isempty(solver.closed_itemsets)
+                @test solver.num_transactions == 0
+
+                solver_rel = SolverType()
+                fit!(solver_rel, empty_txs, 0.5)
+                @test isempty(solver_rel.closed_itemsets)
+            end
+        end
+
+        # 4.2 1 transaction
+        @testset "Single transaction" begin
+            single_tx = [[10, 20, 30]]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, single_tx, 1)
+                @test length(solver.closed_itemsets) == 1
+                @test Set(solver.closed_itemsets[1][1]) == Set([10, 20, 30])
+                @test solver.closed_itemsets[1][2] == 1
+            end
+        end
+
+        # 4.3 100% minsup
+        @testset "Minsup 100%" begin
+            txs = [
+                [1, 2, 3],
+                [2, 3, 4],
+                [2, 3, 5]
+            ]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, txs, 1.0)
+                # Chỉ có {2, 3} xuất hiện trong cả 3 giao dịch
+                @test length(solver.closed_itemsets) == 1
+                @test Set(solver.closed_itemsets[1][1]) == Set([2, 3])
+                @test solver.closed_itemsets[1][2] == 3
+            end
+        end
+
+        # 4.4 không sorted item
+        @testset "Unsorted items in transactions" begin
+            unsorted_txs = [
+                [5, 2, 1],
+                [1, 5, 2],
+                [2, 1, 5]
+            ]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, unsorted_txs, 2)
+                @test length(solver.closed_itemsets) == 1
+                @test Set(solver.closed_itemsets[1][1]) == Set([1, 2, 5])
+                @test solver.closed_itemsets[1][2] == 3
+            end
+        end
+
+        # 4.5 Minsup cao hơn tổng transaction
+        @testset "Minsup exceeds transaction count" begin
+            txs = [[1, 2], [2, 3]]
+            for SolverType in [BaselineCharmSolver, OptimizedCharmSolver]
+                solver = SolverType()
+                fit!(solver, txs, 10)
+                @test isempty(solver.closed_itemsets)
+            end
+        end
+    end
