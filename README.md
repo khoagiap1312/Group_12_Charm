@@ -15,9 +15,9 @@ Có hai bản cài đặt chạy trên cùng một thuật toán lõi (`src/algo
 
 | Vai trò | Họ tên | MSSV |
 |---|---|---|
-| Thành viên 1 - Core Algorithm & Baseline | ... | ... |
-| Thành viên 2 - Optimization & Benchmark | ... | ... |
-| Thành viên 3 - Data Pipeline & Applications | ... | ... |
+| Thành viên 1 - Core Algorithm & Baseline | Giáp Đăng Khoa | 24127186 |
+| Thành viên 2 - Optimization & Benchmark | Nguyễn Hoàng Đăng Khoa | 24127187 |
+| Thành viên 3 - Data Pipeline & Applications | Trần Ngọc Quân | 24127518 |
 
 ## Hướng dẫn chạy
 
