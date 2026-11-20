@@ -178,5 +178,6 @@ function main(args)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    Sys.which("java")
     exit(main(ARGS))
 end
