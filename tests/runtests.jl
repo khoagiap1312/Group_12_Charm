@@ -10,4 +10,9 @@ using Test
     println(">>> Running Automated Correctness Tests vs SPMF...")
     println("=======================================================")
     include(joinpath(@__DIR__, "test_correctness.jl"))
+
+    println("\n=======================================================")
+    println(">>> Running Item Order Tests (result must not depend on item order)...")
+    println("=======================================================")
+    include(joinpath(@__DIR__, "test_item_order.jl"))
 end

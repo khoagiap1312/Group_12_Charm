@@ -32,7 +32,18 @@ function engine_cmd(engine, inp, out, minsup)
         return `java -jar $JAR run Charm_bitset $inp $out $pct`
     end
     julia = joinpath(Sys.BINDIR, Base.julia_exename())
-    return `$julia --project=$ROOT $MAIN -i $inp -m $(float(minsup)) -o $out -a $engine -w 1`
+    algo, order = split_engine(engine)
+    return `$julia --project=$ROOT $MAIN -i $inp -m $(float(minsup)) -o $out -a $algo -r $order -w 1`
+end
+
+# "baseline", "optimized", hoặc biến thể thứ tự item: "baseline+asc", "optimized+desc"
+function split_engine(engine::AbstractString)
+    parts = split(engine, '+')
+    algo = String(parts[1])
+    length(parts) == 1 && return algo, "none"
+    parts[2] == "asc" && return algo, "support_asc"
+    parts[2] == "desc" && return algo, "support_desc"
+    error("Engine không hợp lệ: $engine")
 end
 
 # Kết quả một lần chạy; thiếu số liệu thì để nothing.
@@ -152,8 +163,134 @@ function bench(name, minsups; repeat=3, timeout=120.0)
     println("-> results/summary_$name.csv")
 end
 
+# ---------- Correctness: so từng itemset của các engine với SPMF ----------
+function compare_engines(inp, minsup, engines)
+    r = run_once("spmf", inp, minsup)
+    r.status == "ok" || error("SPMF lỗi trên $inp (minsup=$minsup): $(r.status)")
+    ref = load_result(r.out)
+    rows = NamedTuple[]
+    for eng in engines
+        g = run_once(eng, inp, minsup)
+        g.status == "ok" || error("$eng lỗi trên $inp (minsup=$minsup): $(g.status)")
+        got = load_result(g.out)
+        matched = count(k -> haskey(got, k) && got[k] == ref[k], keys(ref))
+        miss = count(k -> !haskey(got, k), keys(ref))
+        extra = count(k -> !haskey(ref, k), keys(got))
+        wrong = count(k -> haskey(got, k) && got[k] != ref[k], keys(ref))
+        union_n = length(ref) + extra
+        rate = union_n == 0 ? 100.0 : 100.0 * matched / union_n # khớp hoàn toàn / hợp hai tập, giống verify_correctness.jl
+        push!(rows, (engine=eng, spmf=length(ref), ours=length(got), matched=matched, miss=miss, extra=extra, wrong=wrong, rate=rate))
+    end
+    return rows
+end
+
+const CORRECT_PLAN = [("chess", [0.9, 0.8, 0.7, 0.6]), ("mushroom", [0.5, 0.3, 0.1]),
+                      ("retail", [0.01, 0.005, 0.002]), ("t10i4d100k", [0.01, 0.005, 0.0025])]
+
+function correctness()
+    mkpath(RESULTS)
+    lines = ["dataset,minsup,engine,spmf_count,ours_count,matched,missing,extra,wrong_support,match_rate"]
+    println(lines[1])
+    for (name, mss) in CORRECT_PLAN, ms in mss
+        inp = joinpath(ROOT, "data", "benchmark", "origin", DATASETS[name])
+        isfile(inp) || error("Thiếu $inp (tải bằng scripts/load_dataset.jl)")
+        for r in compare_engines(inp, ms, ("baseline", "optimized", "baseline+asc", "optimized+asc"))
+            push!(lines, join([name, ms, r.engine, r.spmf, r.ours, r.matched, r.miss, r.extra, r.wrong, round(r.rate, digits=2)], ','))
+            println(lines[end]); flush(stdout)
+        end
+    end
+    write(joinpath(RESULTS, "correctness.csv"), join(lines, '\n') * '\n')
+    println("-> results/correctness.csv")
+end
+
+# ---------- Sweep tổng quát: scalability, độ dài giao dịch, so sánh thứ tự item ----------
+const SWEEP_RAW_HEAD = "experiment,group,x,minsup,engine,run,status,time_ms,fit_ms,wall_s,peak_mb,n_closed"
+const SWEEP_SUM_HEAD = "experiment,group,x,minsup,engine,status,time_ms,fit_ms,wall_s,peak_mb,n_closed"
+
+# jobs: danh sách (group, x, đường dẫn, minsup). Engine quá hạn/lỗi ở một job thì bỏ qua các job sau của cùng group.
+function run_sweep(tag, jobs, engines; repeat=3, timeout=120.0)
+    mkpath(RESULTS)
+    for (_, _, inp, _) in jobs
+        isfile(inp) || error("Thiếu $inp (tải bằng scripts/load_dataset.jl)")
+    end
+    dead = Set{Tuple{String,String}}()
+    raw, summary = String[], String[]
+    for (group, x, inp, ms) in jobs, eng in engines
+        key = (eng, group)
+        if key in dead
+            push!(summary, join([tag, group, x, ms, eng, "skipped", "", "", "", "", ""], ','))
+            continue
+        end
+        runs = RunResult[]
+        for i in 1:repeat
+            r = run_once(eng, inp, ms; timeout)
+            line = join([tag, group, x, ms, eng, i, r.status, fmt(r.time_ms), fmt(r.fit_ms), r.wall_s, fmt(r.peak_mb), fmt(r.n_closed)], ',')
+            push!(raw, line)
+            println(line); flush(stdout)
+            if r.status != "ok"
+                push!(dead, key)
+                runs = [r]
+                break
+            end
+            push!(runs, r)
+        end
+        if runs[1].status != "ok"
+            push!(summary, join([tag, group, x, ms, eng, runs[1].status, "", "", "", "", ""], ','))
+        else
+            push!(summary, join([tag, group, x, ms, eng, "ok", med([r.time_ms for r in runs]),
+                                 eng == "spmf" ? "" : med([r.fit_ms for r in runs]), med([r.wall_s for r in runs]),
+                                 med([r.peak_mb for r in runs]), runs[1].n_closed], ','))
+        end
+    end
+    write(joinpath(RESULTS, "raw_$tag.csv"), join([SWEEP_RAW_HEAD; raw], '\n') * '\n')
+    write(joinpath(RESULTS, "summary_$tag.csv"), join([SWEEP_SUM_HEAD; summary], '\n') * '\n')
+    println("-> results/summary_$tag.csv")
+end
+
+bench_dir(sub...) = joinpath(ROOT, "data", "benchmark", sub...)
+
+# Scalability: tập con 10/25/50/75/100% giao dịch, minsup tương đối cố định
+function scale_jobs(name, minsups)
+    stem = splitext(DATASETS[name])[1]
+    [("minsup=$ms", string(pct), bench_dir("scale", "$(pct)_percentage", "$(stem)_$(pct).txt"), ms)
+     for ms in minsups for pct in (10, 25, 50, 75, 100)]
+end
+
+# Ảnh hưởng độ dài giao dịch: CSDL tổng hợp T10..T40 (20.000 giao dịch, cùng số item)
+length_jobs(minsups) = [("minsup=$ms", string(t), bench_dir("length", "$(t)_length", "syn_T$(t)_I4_D20000.txt"), ms)
+                        for ms in minsups for t in 10:5:40]
+
+# So sánh thứ tự item: mặc định / support tăng dần / support giảm dần, cho cả hai bản
+const IMPROVE_PLAN = [("chess", [0.7, 0.6]), ("mushroom", [0.2, 0.1]),
+                      ("retail", [0.005, 0.001]), ("t10i4d100k", [0.005, 0.001])]
+improve_jobs() = [("$name@$ms", "", bench_dir("origin", DATASETS[name]), ms) for (name, mss) in IMPROVE_PLAN for ms in mss]
+const IMPROVE_ENGINES = ("baseline", "baseline+asc", "baseline+desc", "optimized", "optimized+asc", "optimized+desc")
+
+# Tách tham số vị trí và các tuỳ chọn --repeat/--timeout
+function parse_sweep_args(rest)
+    repeat, timeout, pos = 3, 120.0, String[]
+    i = 1
+    while i <= length(rest)
+        if rest[i] == "--repeat"
+            repeat = parse(Int, rest[i+1]); i += 2
+        elseif rest[i] == "--timeout"
+            timeout = parse(Float64, rest[i+1]); i += 2
+        else
+            push!(pos, rest[i]); i += 1
+        end
+    end
+    return pos, repeat, timeout
+end
+
 function main(args)
-    usage = "Cách dùng:\n  julia scripts/benchmark.jl compare <file> <minsup>\n  julia scripts/benchmark.jl bench <$(join(sort(collect(keys(DATASETS))), '|'))> <minsup...> [--repeat N] [--timeout giây]"
+    usage = """
+    Cách dùng:
+      julia scripts/benchmark.jl compare <file> <minsup>
+      julia scripts/benchmark.jl bench <$(join(sort(collect(keys(DATASETS))), '|'))> <minsup...> [--repeat N] [--timeout giây]
+      julia scripts/benchmark.jl scale <dataset> <minsup...> [--repeat N] [--timeout giây]   # tập con 10-100% giao dịch
+      julia scripts/benchmark.jl length <minsup...> [--repeat N] [--timeout giây]            # CSDL tổng hợp T10-T40
+      julia scripts/benchmark.jl improve [--repeat N] [--timeout giây]                       # so sánh thứ tự item
+      julia scripts/benchmark.jl correctness                                                 # bảng khớp SPMF trên 4 tập"""
     isempty(args) && (println(usage); return 1)
     mode, rest = args[1], args[2:end]
     if mode == "compare" && length(rest) == 2
@@ -171,6 +308,23 @@ function main(args)
             end
         end
         bench(rest[1], minsups; repeat, timeout)
+        return 0
+    elseif mode == "scale"
+        pos, repeat, timeout = parse_sweep_args(rest)
+        (length(pos) >= 2 && haskey(DATASETS, pos[1])) || (println(usage); return 1)
+        run_sweep("scale_$(pos[1])", scale_jobs(pos[1], parse.(Float64, pos[2:end])), ENGINES; repeat, timeout)
+        return 0
+    elseif mode == "length"
+        pos, repeat, timeout = parse_sweep_args(rest)
+        isempty(pos) && (println(usage); return 1)
+        run_sweep("length", length_jobs(parse.(Float64, pos)), ENGINES; repeat, timeout)
+        return 0
+    elseif mode == "improve"
+        _, repeat, timeout = parse_sweep_args(rest)
+        run_sweep("improve", improve_jobs(), IMPROVE_ENGINES; repeat, timeout)
+        return 0
+    elseif mode == "correctness"
+        correctness()
         return 0
     end
     println(usage)

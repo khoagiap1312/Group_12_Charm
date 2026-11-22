@@ -20,6 +20,8 @@ function print_usage()
       -o, --output <path>       Path to output file (default: "output.txt")
       -a, --algo <name>         Solver implementation: "baseline" or "optimized" (default: "baseline")
       -w, --warmup <0|1>        1 = compile first on a few transactions so the timing excludes JIT (default: 0)
+      -r, --order <name>        Item processing order: none | support_asc | support_desc (default: none).
+                                Only affects speed, the mined itemsets are identical.
       -h, --help                Show this help message and exit
 
     Examples:
@@ -36,7 +38,8 @@ function parse_cli_args(args::Vector{String})::Dict{String, String}
         "-m" => "minsup", "--minsup" => "minsup",
         "-o" => "output", "--output" => "output",
         "-a" => "algo",   "--algo"   => "algo",
-        "-w" => "warmup", "--warmup" => "warmup"
+        "-w" => "warmup", "--warmup" => "warmup",
+        "-r" => "order",  "--order"  => "order"
     )
 
     i = 1
@@ -105,18 +108,19 @@ function main()
         algo_name   = get(opts, "algo", "baseline")
         minsup = parse_minsup(minsup_raw)
         solver = build_solver(algo_name)
+        order = Symbol(lowercase(strip(get(opts, "order", "none"))))
 
         if get(opts, "warmup", "0") == "1" # compile first (read, fit!, write) so the timing excludes JIT
             warm_tx = read_spmf_transactions(input_path)
             warm = build_solver(algo_name)
-            fit!(warm, warm_tx[1:min(200, length(warm_tx))], 0.5)
+            fit!(warm, warm_tx[1:min(200, length(warm_tx))], 0.5; order)
             warm_out = tempname()
             save_spmf(warm, warm_out)
             rm(warm_out, force=true)
         end
         read_stats = @timed read_spmf_transactions(input_path)
         transactions = read_stats.value
-        stats = @timed fit!(solver, transactions, minsup)
+        stats = @timed fit!(solver, transactions, minsup; order)
         write_stats = @timed save_spmf(solver, output_path)
 
         elapsed_ms = round(stats.time * 1000, digits=2)
