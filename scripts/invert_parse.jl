@@ -1,7 +1,3 @@
-using Pkg
-
-Pkg.activate(@__DIR__)
-
 using CSV
 using DataFrames
 using ArgParse

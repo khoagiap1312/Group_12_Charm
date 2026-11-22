@@ -212,7 +212,13 @@ def plot_minsup_curve(df_summary: pd.DataFrame, save_path: Path) -> None:
 
 
 def plot_normal_vs_anomaly(df_cmp: pd.DataFrame, save_path: Path, top_k: int = 12) -> None:
-    df_top = df_cmp.head(top_k).iloc[::-1]
+    half = top_k // 2
+    df_norm = df_cmp[df_cmp["anom_to_norm_ratio"] < 0.8].head(half)
+    df_anom = df_cmp[df_cmp["anom_to_norm_ratio"] >= 1.5].sort_values(
+        "sup_anomaly_pct", ascending=False
+    ).head(half)
+    df_top = pd.concat([df_norm, df_anom], ignore_index=True).iloc[::-1]
+    
     labels = [
         (s[:58] + "...") if len(s) > 60 else s for s in df_top["event_templates"].tolist()
     ]
