@@ -1,0 +1,14 @@
+﻿scope,minsup,total_closed,closed_len_ge_2,max_length,file
+airplanes,0.15,180,14,3,charm_airplanes_minsup_0.15.txt
+airplanes,0.1,479,248,3,charm_airplanes_minsup_0.10.txt
+airplanes,0.08,1117,865,4,charm_airplanes_minsup_0.08.txt
+all,0.1,294,3,2,charm_all_minsup_0.10.txt
+all,0.07,371,73,2,charm_all_minsup_0.07.txt
+all,0.05,1540,1240,3,charm_all_minsup_0.05.txt
+all,0.03,15845,15545,5,charm_all_minsup_0.03.txt
+faces_easy,0.15,235,74,3,charm_faces_easy_minsup_0.15.txt
+faces_easy,0.1,850,602,4,charm_faces_easy_minsup_0.10.txt
+faces_easy,0.08,1830,1566,5,charm_faces_easy_minsup_0.08.txt
+motorbikes,0.15,252,101,3,charm_motorbikes_minsup_0.15.txt
+motorbikes,0.1,1147,931,4,charm_motorbikes_minsup_0.10.txt
+motorbikes,0.08,2640,2405,5,charm_motorbikes_minsup_0.08.txt

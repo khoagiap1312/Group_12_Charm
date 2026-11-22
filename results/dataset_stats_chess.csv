@@ -1,0 +1,13 @@
+group,label,file,n_trans,n_items,avg_len,min_len,max_len,dup_lines,empty_lines
+scale_chess,10%,chess_10.txt,320,71,37.0,37,37,0,0
+scale_chess,25%,chess_25.txt,799,74,37.0,37,37,0,0
+scale_chess,50%,chess_50.txt,1598,75,37.0,37,37,0,0
+scale_chess,75%,chess_75.txt,2397,75,37.0,37,37,0,0
+scale_chess,100%,chess_100.txt,3196,75,37.0,37,37,0,0
+length,T10,syn_T10_I4_D20000.txt,20000,558,9.97,1,26,0,0
+length,T15,syn_T15_I4_D20000.txt,20000,558,14.98,2,32,0,0
+length,T20,syn_T20_I4_D20000.txt,20000,558,19.97,4,43,0,0
+length,T25,syn_T25_I4_D20000.txt,20000,558,24.97,7,47,0,0
+length,T30,syn_T30_I4_D20000.txt,20000,558,30.0,9,55,0,0
+length,T35,syn_T35_I4_D20000.txt,20000,558,35.06,15,62,0,0
+length,T40,syn_T40_I4_D20000.txt,20000,558,40.01,18,67,0,0

@@ -1,0 +1,6 @@
+﻿minsup,minsup_count,total_closed,closed_len_ge_2,max_length,file
+0.1,52043,179,162,6,charm_minsup_0.1.txt
+0.05,26022,590,572,8,charm_minsup_0.05.txt
+0.02,10409,1816,1788,10,charm_minsup_0.02.txt
+0.01,5205,4210,4173,11,charm_minsup_0.01.txt
+0.005,2603,7839,7791,12,charm_minsup_0.005.txt
