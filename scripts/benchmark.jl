@@ -312,12 +312,12 @@ function main(args)
     elseif mode == "scale"
         pos, repeat, timeout = parse_sweep_args(rest)
         (length(pos) >= 2 && haskey(DATASETS, pos[1])) || (println(usage); return 1)
-        run_sweep("scale_$(pos[1])", scale_jobs(pos[1], parse.(Float64, pos[2:end])), ENGINES; repeat, timeout)
+        run_sweep("tv2_scale_$(pos[1])", scale_jobs(pos[1], parse.(Float64, pos[2:end])), ENGINES; repeat, timeout)
         return 0
     elseif mode == "length"
         pos, repeat, timeout = parse_sweep_args(rest)
         isempty(pos) && (println(usage); return 1)
-        run_sweep("length", length_jobs(parse.(Float64, pos)), ENGINES; repeat, timeout)
+        run_sweep("tv2_length", length_jobs(parse.(Float64, pos)), ENGINES; repeat, timeout)
         return 0
     elseif mode == "improve"
         _, repeat, timeout = parse_sweep_args(rest)

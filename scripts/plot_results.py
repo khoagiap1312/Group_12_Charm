@@ -223,7 +223,7 @@ def fig_ram():
 
 # ---------------------------------------------------------------- 5. Scalability
 def fig_scalability():
-    s_rows = read("summary_scale_retail.csv")
+    s_rows = read("summary_tv2_scale_retail.csv")
     if s_rows is None:
         return
     groups = sorted({r["group"] for r in s_rows}, reverse=True)
@@ -248,7 +248,7 @@ def fig_scalability():
 
 # ---------------------------------------------------------------- 6. Độ dài giao dịch
 def fig_length():
-    s_rows = read("summary_length.csv")
+    s_rows = read("summary_tv2_length.csv")
     if s_rows is None:
         return
     groups = sorted({r["group"] for r in s_rows}, reverse=True)
@@ -403,8 +403,8 @@ def write_tables():
         parts.append("### B4. Correctness: số itemset khớp hoàn toàn (cả itemset và support) với SPMF\n\n" + md_table(
             ["Dataset", "minsup", "Số itemset SPMF", "Baseline", "Optimized", "Baseline+asc", "Optimized+asc"], rows))
     # B5: scalability và length
-    for tag, title, xname in (("scale_retail", "B5. Scalability trên Retail: thời gian tổng (ms)", "% giao dịch"),
-                              ("length", "B6. Ảnh hưởng độ dài giao dịch: thời gian tổng (ms)", "T")):
+    for tag, title, xname in (("tv2_scale_retail", "B5. Scalability trên Retail: thời gian tổng (ms)", "% giao dịch"),
+                              ("tv2_length", "B6. Ảnh hưởng độ dài giao dịch: thời gian tổng (ms)", "T")):
         r = read(f"summary_{tag}.csv")
         if r:
             rows = []
