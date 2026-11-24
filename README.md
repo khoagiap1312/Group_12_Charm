@@ -233,6 +233,9 @@ Group_12_Charm/
 │   └── pre-processing/              # notebook tiền xử lý dữ liệu cho hai ứng dụng
 ├── scripts/
 │   ├── benchmark.jl                 # đối chiếu SPMF và benchmark
+│   ├── analysis.jl, plot_results.py # phân tích tidset/Diffset, vẽ biểu đồ và bảng (TV2)
+│   ├── bench_scale_length.jl        # benchmark scalability và độ dài giao dịch (TV3)
+│   ├── analyze_caltech101.py, analyze_web_logs.py  # phân tích hai ứng dụng (TV3)
 │   ├── load_dataset.jl              # tải dữ liệu từ Hugging Face
 │   ├── generate_data.jl             # sinh tập con và dữ liệu tổng hợp
 │   └── invert_parse.jl              # đổi kết quả từ mã số về tên item
@@ -240,7 +243,7 @@ Group_12_Charm/
 ├── data/toy/                        # CSDL nhỏ để kiểm thử nhanh
 ├── results/                         # kết quả benchmark (CSV)
 ├── notebooks/demo.ipynb             # demo trên Google Colab
-└── docs/                            # báo cáo (Report.pdf)
+└── docs/                            # báo cáo: Chương 1-2 (TV2), Chương 3 (TV3), figures/, tables_tv2.md
 ```
 
 ## Output lần chạy test gần nhất
@@ -249,11 +252,12 @@ Group_12_Charm/
 
 ```
 Test Summary:                                         | Pass  Total  Time
-Group 12 CHARM - Full Test Suite                      |  148    148  8.8s
+Group 12 CHARM - Full Test Suite                      |  189    189  8.8s
   Unit test for baseline                              |   48     48  2.3s
   BitsetTidset & Optimized Solver                     |   34     34  1.0s
   Edge Cases & Corner Cases                           |   26     26  0.3s
   Group 12 CHARM - Automated Correctness Verification |   40     40  2.8s
+  Item order: thứ tự duyệt item không đổi kết quả     |   41     41  1.4s
 ```
 
 Đối chiếu với SPMF trên 5 CSDL (cả hai bản đều khớp 100%):
