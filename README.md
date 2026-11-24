@@ -54,6 +54,7 @@ julia src/main.jl --input <file> --minsup <ngưỡng> [--output <file>] [--algo 
 | `-m, --minsup` | ngưỡng support tối thiểu (bắt buộc), xem bảng dưới | |
 | `-o, --output` | file kết quả | `output.txt` |
 | `-a, --algo` | `baseline` hoặc `optimized` | `baseline` |
+| `-r, --order` | thứ tự duyệt item: `none`, `support_asc`, `support_desc` (chỉ ảnh hưởng tốc độ) | `none` |
 | `-w, --warmup` | `1` = biên dịch trước để thời gian đo không chứa JIT (dùng khi benchmark) | `0` |
 | `-h, --help` | in hướng dẫn | |
 
@@ -180,6 +181,19 @@ julia scripts/benchmark.jl bench t10i4d100k 0.02 0.01 0.005 0.0025 0.001 0.0005
 
 Với mỗi mức minsup, script chạy ba engine (`spmf`, `baseline`, `optimized`), mỗi cấu hình **3 lần**, mỗi lần là một tiến
 trình riêng, lấy **trung vị**. Engine nào quá `--timeout` giây thì bỏ qua các minsup thấp hơn. Cả bốn lệnh mất khoảng 10 đến 15 phút.
+Các thí nghiệm của giai đoạn 3 (cần thêm `matplotlib` để vẽ):
+
+```bash
+julia scripts/benchmark.jl correctness                    # khớp SPMF, results/correctness.csv
+julia scripts/benchmark.jl scale retail 0.005 0.002       # tập con 10-100% giao dịch
+julia scripts/benchmark.jl length 0.02 0.01               # CSDL tổng hợp T10-T40
+julia scripts/benchmark.jl improve                        # thứ tự item tăng/giảm dần
+julia scripts/analysis.jl                                 # kích thước tidset và Diffset
+python scripts/plot_results.py                            # docs/figures/*, docs/tables_tv2.md
+```
+
+Báo cáo phần TV2 (Chương 1 mục bản tối ưu và Chương 2) nằm ở `docs/TV2_Chuong1_Chuong2.md`.
+
 Benchmark không dùng yếu tố ngẫu nhiên nên chạy lại cho kết quả cùng hình dạng (thời gian dao động theo máy).
 
 Kết quả ghi vào `results/`:
