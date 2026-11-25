@@ -279,7 +279,7 @@ contextRelim         | 2      | Optimized  | 10        | 10        | 10        |
 ## Tài nguyên & Google Colab
 
 - Dữ liệu benchmark và dữ liệu ứng dụng: <https://huggingface.co/datasets/Quanbro7/Charm_Dataset>
-- Demo notebook trên Google Colab: ... (đang cập nhật)
+- Demo notebook trên Google Colab: <https://colab.research.google.com/drive/10N1P3OAW-vahx9dN6Fnaw0eTW1IUjJDN#scrollTo=V1uhJFh2e0Y1>
   - Lưu ý phiên bản Julia: máy local và CI dùng Julia 1.13.4, còn Colab cài sẵn Julia 1.12.6. Notebook vẫn chạy đúng và cho cùng số tập đóng với bản local (đã đối chiếu ở các cấu hình trong notebook), nên không ghim lại phiên bản.
 - Báo cáo: `docs/Report.pdf` (đang cập nhật)
 
