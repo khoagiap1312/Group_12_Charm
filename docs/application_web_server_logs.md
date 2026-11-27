@@ -1,8 +1,8 @@
-# **Chương 3: Ứng dụng thực tế của thuật toán CHARM**
+# **Ứng dụng thực tế của thuật toán CHARM**
 
-# **3.1. Ứng dụng 1: Khai phá mẫu hành vi và phát hiện bất thường trên Web Server Access Logs**
+# **Ứng dụng 1: Khai phá mẫu hành vi và phát hiện bất thường trên Web Server Access Logs**
 
-## **3.1.1. Mô tả tập dữ liệu và quy trình tiền xử lý**
+## **1. Mô tả tập dữ liệu và quy trình tiền xử lý**
 
 **Nguồn dữ liệu và quy mô**  
 Nghiên cứu sử dụng tập dữ liệu nhật ký truy cập máy chủ web (**Web Server Access Logs**) bao gồm tổng cộng 10.365.152 dòng log thô. Dữ liệu được lưu trữ, quản lý phiên bản và đồng bộ tập trung tại kho lưu trữ dự án `Quanbro7/Charm_Dataset` (đường dẫn `data/application/web_server_access_logs/pre_process/`).
@@ -29,7 +29,7 @@ Do tập nhật ký thô ban đầu không kèm theo nhãn chuẩn (*ground-trut
 
 ---
 
-## **3.1.2. Thiết lập thực nghiệm và ảnh hưởng của ngưỡng minsup**
+## **2. Thiết lập thực nghiệm và ảnh hưởng của ngưỡng minsup**
 
 **Cấu hình chạy thuật toán CHARM**  
 Toàn bộ quá trình khai phá tập mục đóng phổ biến (*Closed Frequent Itemsets*) sử dụng thuật toán CHARM phiên bản tối ưu (-a optimized) do nhóm nghiên cứu tự cài đặt hoàn toàn trên ngôn ngữ Julia (src/main.jl), không sử dụng các thư viện khai phá tập phổ biến ngoài. Sau khi thu được kết quả ở dạng mã số nguyên SPMF, chương trình `scripts/invert_parse.jl` được sử dụng để ánh xạ ngược các mã số về tên nhãn sự kiện nguyên bản nhằm phục vụ phân tích.
@@ -61,7 +61,7 @@ Bảng 3.1 thống kê chi tiết kết quả khai phá tập mục đóng tươ
 
 ---
 
-## **3.1.3. Phân tích Top Closed Itemsets và so sánh Phiên bình thường vs. Phiên bất thường**
+## **3. Phân tích Top Closed Itemsets và so sánh Phiên bình thường vs. Phiên bất thường**
 
 Để làm rõ sự khác biệt mang tính bản chất giữa hành vi của người dùng hợp lệ và các tác nhân bất thường, Bảng 3.2 tổng hợp và so sánh tần suất xuất hiện của các tập mục đóng tiêu biểu (độ dài ≥ 2\) trên hai phân nhóm dữ liệu.
 
@@ -94,7 +94,7 @@ Bảng 3.1 thống kê chi tiết kết quả khai phá tập mục đóng tươ
 
 ---
 
-## **3.1.4. Thảo luận: Khả năng phát hiện lỗi, hành vi bất thường và các hạn chế**
+## **4. Thảo luận: Khả năng phát hiện lỗi, hành vi bất thường và các hạn chế**
 
 ### **1\. Khả năng phát hiện hành vi bất thường và chẩn đoán lỗi hệ thống**
 

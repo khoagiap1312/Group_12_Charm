@@ -1,8 +1,8 @@
-# **Chương 3 (Tiếp theo): Ứng dụng thực tế của thuật toán CHARM**
+# **Ứng dụng thực tế của thuật toán CHARM**
 
-# **3.2. Ứng dụng 2: Khai phá mẫu trực quan (Visual Patterns) trên tập ảnh Caltech-101**
+# **Ứng dụng 2: Khai phá mẫu trực quan (Visual Patterns) trên tập ảnh Caltech-101**
 
-## **3.2.1. Mô tả tập dữ liệu và quy trình chuyển đổi ảnh sang giao dịch SPMF**
+## **1. Mô tả tập dữ liệu và quy trình chuyển đổi ảnh sang giao dịch SPMF**
 
 **Nguồn dữ liệu và tập con thực nghiệm**
 
@@ -33,7 +33,7 @@ Toàn bộ quy trình tiền xử lý được cài đặt tái lập trong note
 
 ---
 
-## **3.2.2. Thiết lập thực nghiệm và ảnh hưởng của ngưỡng minsup**
+## **2. Thiết lập thực nghiệm và ảnh hưởng của ngưỡng minsup**
 
 Cấu hình khai phá CHARM theo 2 chiến lược phạm vi
 
@@ -76,7 +76,7 @@ Thuật toán CHARM phiên bản tối ưu (-a optimized) tự cài đặt bằn
 
 ---
 
-## **3.2.3. Phân tích Top Closed Itemsets và độ tinh khiết theo lớp (Class Purity)**
+## **3. Phân tích Top Closed Itemsets và độ tinh khiết theo lớp (Class Purity)**
 
 **Định nghĩa chỉ số độ tinh khiết theo lớp (Class Purity)**
 
@@ -135,7 +135,7 @@ Một closed itemset có Purity cao (90%–100%) đóng vai trò như một "ch�
 
 ---
 
-## **3.2.4. Trực quan hóa lưới Patch đại diện của các Visual Words**
+## **4. Trực quan hóa lưới Patch đại diện của các Visual Words**
 
 Để kiểm chứng trực quan ý nghĩa thị giác đằng sau các mã số Visual Word ID, kịch bản `scripts/analyze_caltech101.py` tổng hợp lưới patch 3 × 3 đại diện cho Top 5 Closed Itemsets (độ dài ≥ 2\) ở mỗi phạm vi. Mỗi hàng tương ứng với một closed itemset (kèm thông số Support, Top Class, Purity), và mỗi cột hiển thị 9 patch 48 × 48 pixel gần tâm cụm nhất của một visual word thành phần.
 
@@ -150,7 +150,7 @@ Các hình kết quả tương ứng để chèn vào báo cáo LaTeX:
 
 ---
 
-## **3.2.5. Thảo luận chuyên sâu: Ứng dụng, độ nhạy tham số (k, minsup) và hạn chế**
+## **5. Thảo luận chuyên sâu: Ứng dụng, độ nhạy tham số (k, minsup) và hạn chế**
 
 **Ý nghĩa mẫu hình đặc trưng và tiềm năng ứng dụng**
 

@@ -1,12 +1,12 @@
-# Phần của TV2: Chương 1 (mục Bản tối ưu) và Chương 2 (Thực nghiệm và đánh giá)
+# Bản cài đặt tối ưu bằng bitset và đánh giá thực nghiệm
 
 > Bản thảo để ghép vào `docs/Report.pdf` (mẫu IEEE). Các hình nằm ở `docs/figures/`, các bảng số liệu sinh tự động
-> từ `results/*.csv` bằng `python scripts/plot_results.py` và nằm ở `docs/tables_tv2.md` (số liệu trong văn bản
+> từ `results/*.csv` bằng `python scripts/plot_results.py` và nằm ở `docs/benchmark_tables.md` (số liệu trong văn bản
 > được lấy từ các bảng đó).
 
 ---
 
-# CHƯƠNG 1 (mục 1.x). Bản cài đặt tối ưu bằng bitset
+# 1. Bản cài đặt tối ưu bằng bitset
 
 ## 1.1 Động lực
 
@@ -16,7 +16,7 @@ Với mỗi cặp nút anh em $(X_i,X_j)$, thuật toán phải thực hiện b�
 $t(X_i\cup X_j)=t(X_i)\cap t(X_j)$ kèm đếm support, (ii) kiểm tra bằng nhau $t(X_i)=t(X_j)$ (tính chất 1),
 (iii) kiểm tra tập con $t(X_i)\subseteq t(X_j)$ (tính chất 2 và 3), (iv) băm tidset để tra bảng kiểm tra
 subsumption. Nghĩa là toàn bộ chi phí thuật toán nằm ở các phép toán tập hợp trên tidset, nên cách biểu diễn tidset
-quyết định hiệu năng. Bản `baseline` (do TV1 cài) lưu tidset dạng mảng số nguyên đã sắp xếp. Bản `optimized`
+quyết định hiệu năng. Bản `baseline` lưu tidset dạng mảng số nguyên đã sắp xếp. Bản `optimized`
 thay biểu diễn này bằng **bitset** và giữ nguyên toàn bộ phần còn lại của thuật toán.
 
 ## 1.2 Biểu diễn bitset
@@ -44,7 +44,7 @@ Hai điểm cần lưu ý khi cài đặt:
 Bản tối ưu nằm ở `src/algorithm/optimized_solver.jl` (khoảng 60 dòng), chỉ định nghĩa kiểu `BitsetTidset` và các
 phương thức của giao diện chung (`tid_intersect`, `tid_issubset`, `tid_hash`, `create_tidset`). Thuật toán lõi
 `charm_core.jl` được dùng chung cho cả hai bản, nên hai bản **chỉ khác nhau ở biểu diễn tidset**. Điều này bảo đảm
-mọi chênh lệch về thời gian và bộ nhớ ở Chương 2 là do biểu diễn tidset gây ra.
+mọi chênh lệch về thời gian và bộ nhớ ở phần 2 là do biểu diễn tidset gây ra.
 
 ```
 Thuật toán 1. tid_intersect(A, B)               Thuật toán 2. tid_issubset(A, B)
@@ -106,11 +106,11 @@ Bản `optimized` cài đặt đúng giao diện của baseline (`AbstractTidset
 bộ bộ kiểm thử tự động: `julia --project=. tests/runtests.jl` gồm 189 kiểm thử, tất cả đều qua. Trong đó có kiểm thử
 đối chiếu baseline với optimized trên cùng dữ liệu, kiểm thử các thao tác trên `BitsetTidset`, các trường hợp biên
 (CSDL rỗng, một giao dịch, minsup bằng 100%, item chưa sắp xếp) và đối chiếu với kết quả SPMF. Kết quả đối chiếu
-trên các tập benchmark ở Chương 2 (mục 2.2).
+trên các tập benchmark ở mục 2.2.
 
 ## 1.6 So sánh trước và sau tối ưu
 
-Thời gian thuật toán `fit!` (trung vị 3 lần, đã loại JIT) và RAM đỉnh; số liệu đầy đủ ở bảng B2 (`docs/tables_tv2.md`).
+Thời gian thuật toán `fit!` (trung vị 3 lần, đã loại JIT) và RAM đỉnh; số liệu đầy đủ ở bảng B2 (`docs/benchmark_tables.md`).
 
 | Dataset (minsup) | Baseline (ms) | Optimized (ms) | Tăng tốc | RAM Base → Opt (MB) |
 |---|---|---|---|---|
@@ -130,7 +130,7 @@ Julia có nền khoảng 225 MB của runtime, nên chênh lệch chỉ đáng k
 
 ---
 
-# CHƯƠNG 2. Thực nghiệm và đánh giá
+# 2. Thực nghiệm và đánh giá
 
 ## 2.1 Thiết lập
 
@@ -276,5 +276,5 @@ julia --project=. scripts/benchmark.jl scale retail 0.005 0.002
 julia --project=. scripts/benchmark.jl length 0.02 0.01
 julia --project=. scripts/benchmark.jl improve
 julia --project=. scripts/analysis.jl
-python scripts/plot_results.py        # cần matplotlib; sinh docs/figures/* và docs/tables_tv2.md
+python scripts/plot_results.py        # cần matplotlib; sinh docs/figures/* và docs/benchmark_tables.md
 ```

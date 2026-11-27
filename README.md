@@ -157,7 +157,7 @@ Script tải về `data/` (bỏ qua file đã có):
 | `data/benchmark/origin/` | 4 tập benchmark: `chess.txt`, `mushrooms.txt`, `retail.txt`, `T10I4D100K.txt`, và `accidents.txt` | khoảng 45 MB |
 | `data/benchmark/scale/` | tập con 10/25/50/75/100% giao dịch (thực nghiệm scalability) | khoảng 116 MB |
 | `data/benchmark/length/` | CSDL tổng hợp có độ dài giao dịch tăng dần | khoảng 14 MB |
-| `data/application/` | dữ liệu đã tiền xử lý cho hai ứng dụng (Chương 3) | khoảng 19 MB |
+| `data/application/` | dữ liệu đã tiền xử lý cho hai ứng dụng | khoảng 19 MB |
 
 Thêm `--raw true` để tải cả dữ liệu thô của ứng dụng log (rất nặng, khoảng 3,5 GB): `julia --project=. scripts/load_dataset.jl --raw true`.
 
@@ -189,10 +189,10 @@ julia scripts/benchmark.jl scale retail 0.005 0.002       # tập con 10-100% gi
 julia scripts/benchmark.jl length 0.02 0.01               # CSDL tổng hợp T10-T40
 julia scripts/benchmark.jl improve                        # thứ tự item tăng/giảm dần
 julia scripts/analysis.jl                                 # kích thước tidset và Diffset
-python scripts/plot_results.py                            # docs/figures/*, docs/tables_tv2.md
+python scripts/plot_results.py                            # docs/figures/*, docs/benchmark_tables.md
 ```
 
-Báo cáo phần TV2 (Chương 1 mục bản tối ưu và Chương 2) nằm ở `docs/TV2_Chuong1_Chuong2.md`.
+Phân tích bản tối ưu và kết quả thực nghiệm nằm ở `docs/optimization_and_evaluation.md`.
 
 Benchmark không dùng yếu tố ngẫu nhiên nên chạy lại cho kết quả cùng hình dạng (thời gian dao động theo máy).
 
@@ -233,9 +233,9 @@ Group_12_Charm/
 │   └── pre-processing/              # notebook tiền xử lý dữ liệu cho hai ứng dụng
 ├── scripts/
 │   ├── benchmark.jl                 # đối chiếu SPMF và benchmark
-│   ├── analysis.jl, plot_results.py # phân tích tidset/Diffset, vẽ biểu đồ và bảng (TV2)
-│   ├── bench_scale_length.jl        # benchmark scalability và độ dài giao dịch (TV3)
-│   ├── analyze_caltech101.py, analyze_web_logs.py  # phân tích hai ứng dụng (TV3)
+│   ├── analysis.jl, plot_results.py # phân tích tidset/Diffset, vẽ biểu đồ và bảng
+│   ├── bench_scale_length.jl        # benchmark scalability và độ dài giao dịch
+│   ├── analyze_caltech101.py, analyze_web_logs.py  # phân tích hai ứng dụng
 │   ├── load_dataset.jl              # tải dữ liệu từ Hugging Face
 │   ├── generate_data.jl             # sinh tập con và dữ liệu tổng hợp
 │   └── invert_parse.jl              # đổi kết quả từ mã số về tên item
@@ -243,7 +243,7 @@ Group_12_Charm/
 ├── data/toy/                        # CSDL nhỏ để kiểm thử nhanh
 ├── results/                         # kết quả benchmark (CSV)
 ├── notebooks/demo.ipynb             # demo trên Google Colab
-└── docs/                            # báo cáo: Chương 1-2 (TV2), Chương 3 (TV3), figures/, tables_tv2.md
+└── docs/                            # tài liệu: tối ưu và thực nghiệm, hai ứng dụng, figures/, benchmark_tables.md
 ```
 
 ## Output lần chạy test gần nhất

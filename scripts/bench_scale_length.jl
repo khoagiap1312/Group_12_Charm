@@ -1,6 +1,6 @@
 # Benchmark Scalability (10%–100%) và Ảnh hưởng độ dài giao dịch (10–40)
-# Tái sử dụng trực tiếp hàm đo `run_once`, `med`, `fmt` từ scripts/benchmark.jl của TV2
-# (không sửa file gốc của TV2 để tránh conflict Git).
+# Tái sử dụng trực tiếp hàm đo `run_once`, `med`, `fmt` từ scripts/benchmark.jl
+# (không sửa scripts/benchmark.jl để tránh conflict Git).
 #
 # Cách đặt file:
 #   scripts/bench_scale_length.jl
@@ -63,7 +63,7 @@ function preflight_check(engines::Vector{String})
             src = read(MAIN, String)
             if !(occursin("\"-w\"", src) || occursin("--warmup", src))
                 println(stderr, "[LỖI] src/main.jl hiện tại CHƯA hỗ trợ cờ -w / --warmup như scripts/benchmark.jl yêu cầu.")
-                println(stderr, "      Hãy git pull bản src/main.jl mới nhất của TV2 trước khi chạy.")
+                println(stderr, "      Hãy git pull bản src/main.jl mới nhất trước khi chạy.")
                 ok = false
             end
             if !occursin("Total:", src)

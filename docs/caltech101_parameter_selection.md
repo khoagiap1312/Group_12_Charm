@@ -1,4 +1,4 @@
-# Hỗ trợ của TV2 cho ứng dụng ảnh (Caltech-101, visual words)
+# Chọn tham số cho ứng dụng ảnh (Caltech-101, visual words)
 
 Dữ liệu: `data/application/cal_tech_101/pre_process/transactions.txt`, gồm 600 giao dịch (mỗi ảnh một giao dịch),
 300 visual word (k = 300), độ dài giao dịch trung bình 47,9 (tối đa 57). Độ dày khoảng 16% (47,9 / 300), cùng loại
@@ -30,12 +30,12 @@ minsup. Mức 0,07 chỉ đo số tập đóng và tính đúng, chưa đo thờ
 - **Không hạ xuống 0,01**: 456 nghìn tập đóng, Optimized chỉ nhanh hơn Baseline 1,4 lần và dùng RAM nhiều hơn
   (598 so với 435 MB), như đã phân tích ở mục 2.8 của báo cáo (tidset đã thưa).
 - Theo từng lớp (khoảng 200 ảnh mỗi lớp), nên đặt minsup cao hơn (0,08 đến 0,15) vì mỗi lớp ít giao dịch hơn;
-  mức TV3 đang dùng nằm đúng khoảng này.
+  mức đang dùng trong notebook demo nằm đúng khoảng này.
 - Nếu muốn giảm số tập cần xem mà không đổi minsup, lọc theo độ dài (≥ 2) và độ tinh khiết lớp như
   `scripts/analyze_caltech101.py` đang làm.
 - Nên chạy bằng `--algo optimized`; thêm `--order support_asc` không cần thiết ở quy mô này.
 
-## 4. Lưu ý cho báo cáo của TV3
+## 4. Lưu ý khi đưa vào báo cáo
 
 - Số liệu mục 2 chỉ chạy một lần mỗi cấu hình; nếu đưa vào báo cáo, cần chạy lại 3 lần lấy trung vị
   (`scripts/benchmark.jl` hiện chỉ hỗ trợ các tập có tên trong `DATASETS`).

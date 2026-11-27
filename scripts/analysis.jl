@@ -1,4 +1,4 @@
-# Phân tích số liệu để giải thích kết quả benchmark (Chương 2) và chứng minh hai hướng cải tiến.
+# Phân tích số liệu để giải thích kết quả benchmark và chứng minh hai hướng cải tiến.
 #
 #   julia --project=. scripts/analysis.jl
 #

@@ -1,10 +1,10 @@
-"""Vẽ 6 nhóm biểu đồ của Chương 2 và sinh các bảng số liệu từ results/*.csv.
+"""Vẽ 6 nhóm biểu đồ thực nghiệm và sinh các bảng số liệu từ results/*.csv.
 
     python scripts/plot_results.py
 
 Đầu ra:
     docs/figures/*.png và *.pdf   các biểu đồ (PDF dùng cho báo cáo IEEE)
-    docs/tables_tv2.md            các bảng số liệu (để dán vào báo cáo, luôn khớp với results/)
+    docs/benchmark_tables.md            các bảng số liệu (để dán vào báo cáo, luôn khớp với results/)
 Chỉ cần matplotlib. Hình nào thiếu dữ liệu đầu vào thì bỏ qua và báo.
 """
 import csv
@@ -223,7 +223,7 @@ def fig_ram():
 
 # ---------------------------------------------------------------- 5. Scalability
 def fig_scalability():
-    s_rows = read("summary_tv2_scale_retail.csv")
+    s_rows = read("summary_sweep_scale_retail.csv")
     if s_rows is None:
         return
     groups = sorted({r["group"] for r in s_rows}, reverse=True)
@@ -248,7 +248,7 @@ def fig_scalability():
 
 # ---------------------------------------------------------------- 6. Độ dài giao dịch
 def fig_length():
-    s_rows = read("summary_tv2_length.csv")
+    s_rows = read("summary_sweep_length.csv")
     if s_rows is None:
         return
     groups = sorted({r["group"] for r in s_rows}, reverse=True)
@@ -403,8 +403,8 @@ def write_tables():
         parts.append("### B4. Correctness: số itemset khớp hoàn toàn (cả itemset và support) với SPMF\n\n" + md_table(
             ["Dataset", "minsup", "Số itemset SPMF", "Baseline", "Optimized", "Baseline+asc", "Optimized+asc"], rows))
     # B5: scalability và length
-    for tag, title, xname in (("tv2_scale_retail", "B5. Scalability trên Retail: thời gian tổng (ms)", "% giao dịch"),
-                              ("tv2_length", "B6. Ảnh hưởng độ dài giao dịch: thời gian tổng (ms)", "T")):
+    for tag, title, xname in (("sweep_scale_retail", "B5. Scalability trên Retail: thời gian tổng (ms)", "% giao dịch"),
+                              ("sweep_length", "B6. Ảnh hưởng độ dài giao dịch: thời gian tổng (ms)", "T")):
         r = read(f"summary_{tag}.csv")
         if r:
             rows = []
@@ -444,11 +444,11 @@ def write_tables():
             ["Dataset", "minsup", "Số item phổ biến", "% item có Diffset nhỏ hơn", "Số cặp", "|t(XY)| TB", "|d(XY)| TB", "% cặp có Diffset nhỏ hơn"],
             [[r["dataset"], f"{float(r['minsup']):g}", r["frequent_items"], f"{100 * float(r['item_diffset_smaller']):.1f}%", f"{int(r['pairs']):,}",
               r["mean_tidset"], r["mean_diffset"], f"{100 * float(r['pair_diffset_smaller']):.1f}%"] for r in f]))
-    path = os.path.join(ROOT, "docs", "tables_tv2.md")
+    path = os.path.join(ROOT, "docs", "benchmark_tables.md")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("<!-- Sinh tự động bởi scripts/plot_results.py từ results/*.csv, không sửa tay -->\n\n" + "\n".join(parts))
-    print("  -> docs/tables_tv2.md")
+    print("  -> docs/benchmark_tables.md")
 
 
 def main():
