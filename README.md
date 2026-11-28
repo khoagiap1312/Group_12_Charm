@@ -54,6 +54,7 @@ julia src/main.jl --input <file> --minsup <ngưỡng> [--output <file>] [--algo 
 | `-m, --minsup` | ngưỡng support tối thiểu (bắt buộc), xem bảng dưới | |
 | `-o, --output` | file kết quả | `output.txt` |
 | `-a, --algo` | `baseline` hoặc `optimized` | `baseline` |
+| `-r, --order` | thứ tự duyệt item: `none`, `support_asc`, `support_desc` (chỉ ảnh hưởng tốc độ) | `none` |
 | `-w, --warmup` | `1` = biên dịch trước để thời gian đo không chứa JIT (dùng khi benchmark) | `0` |
 | `-h, --help` | in hướng dẫn | |
 
@@ -156,7 +157,7 @@ Script tải về `data/` (bỏ qua file đã có):
 | `data/benchmark/origin/` | 4 tập benchmark: `chess.txt`, `mushrooms.txt`, `retail.txt`, `T10I4D100K.txt`, và `accidents.txt` | khoảng 45 MB |
 | `data/benchmark/scale/` | tập con 10/25/50/75/100% giao dịch (thực nghiệm scalability) | khoảng 116 MB |
 | `data/benchmark/length/` | CSDL tổng hợp có độ dài giao dịch tăng dần | khoảng 14 MB |
-| `data/application/` | dữ liệu đã tiền xử lý cho hai ứng dụng (Chương 3) | khoảng 19 MB |
+| `data/application/` | dữ liệu đã tiền xử lý cho hai ứng dụng | khoảng 19 MB |
 
 Thêm `--raw true` để tải cả dữ liệu thô của ứng dụng log (rất nặng, khoảng 3,5 GB): `julia --project=. scripts/load_dataset.jl --raw true`.
 
@@ -180,6 +181,19 @@ julia scripts/benchmark.jl bench t10i4d100k 0.02 0.01 0.005 0.0025 0.001 0.0005
 
 Với mỗi mức minsup, script chạy ba engine (`spmf`, `baseline`, `optimized`), mỗi cấu hình **3 lần**, mỗi lần là một tiến
 trình riêng, lấy **trung vị**. Engine nào quá `--timeout` giây thì bỏ qua các minsup thấp hơn. Cả bốn lệnh mất khoảng 10 đến 15 phút.
+Các thí nghiệm của giai đoạn 3 (cần thêm `matplotlib` để vẽ):
+
+```bash
+julia scripts/benchmark.jl correctness                    # khớp SPMF, results/correctness.csv
+julia scripts/benchmark.jl scale retail 0.005 0.002       # tập con 10-100% giao dịch
+julia scripts/benchmark.jl length 0.02 0.01               # CSDL tổng hợp T10-T40
+julia scripts/benchmark.jl improve                        # thứ tự item tăng/giảm dần
+julia scripts/analysis.jl                                 # kích thước tidset và Diffset
+python scripts/plot_results.py                            # docs/figures/*, docs/benchmark_tables.md
+```
+
+Phân tích bản tối ưu và kết quả thực nghiệm nằm ở `docs/optimization_and_evaluation.md`.
+
 Benchmark không dùng yếu tố ngẫu nhiên nên chạy lại cho kết quả cùng hình dạng (thời gian dao động theo máy).
 
 Kết quả ghi vào `results/`:
@@ -219,6 +233,9 @@ Group_12_Charm/
 │   └── pre-processing/              # notebook tiền xử lý dữ liệu cho hai ứng dụng
 ├── scripts/
 │   ├── benchmark.jl                 # đối chiếu SPMF và benchmark
+│   ├── analysis.jl, plot_results.py # phân tích tidset/Diffset, vẽ biểu đồ và bảng
+│   ├── bench_scale_length.jl        # benchmark scalability và độ dài giao dịch
+│   ├── analyze_caltech101.py, analyze_web_logs.py  # phân tích hai ứng dụng
 │   ├── load_dataset.jl              # tải dữ liệu từ Hugging Face
 │   ├── generate_data.jl             # sinh tập con và dữ liệu tổng hợp
 │   └── invert_parse.jl              # đổi kết quả từ mã số về tên item
@@ -226,7 +243,7 @@ Group_12_Charm/
 ├── data/toy/                        # CSDL nhỏ để kiểm thử nhanh
 ├── results/                         # kết quả benchmark (CSV)
 ├── notebooks/demo.ipynb             # demo trên Google Colab
-└── docs/                            # báo cáo (Report.pdf)
+└── docs/                            # tài liệu: tối ưu và thực nghiệm, hai ứng dụng, figures/, benchmark_tables.md
 ```
 
 ## Output lần chạy test gần nhất
@@ -235,11 +252,12 @@ Group_12_Charm/
 
 ```
 Test Summary:                                         | Pass  Total  Time
-Group 12 CHARM - Full Test Suite                      |  148    148  8.8s
+Group 12 CHARM - Full Test Suite                      |  189    189  8.8s
   Unit test for baseline                              |   48     48  2.3s
   BitsetTidset & Optimized Solver                     |   34     34  1.0s
   Edge Cases & Corner Cases                           |   26     26  0.3s
   Group 12 CHARM - Automated Correctness Verification |   40     40  2.8s
+  Item order: thứ tự duyệt item không đổi kết quả     |   41     41  1.4s
 ```
 
 Đối chiếu với SPMF trên 5 CSDL (cả hai bản đều khớp 100%):
@@ -261,7 +279,8 @@ contextRelim         | 2      | Optimized  | 10        | 10        | 10        |
 ## Tài nguyên & Google Colab
 
 - Dữ liệu benchmark và dữ liệu ứng dụng: <https://huggingface.co/datasets/Quanbro7/Charm_Dataset>
-- Demo notebook trên Google Colab: ... (đang cập nhật)
+- Demo notebook trên Google Colab: <https://colab.research.google.com/drive/10N1P3OAW-vahx9dN6Fnaw0eTW1IUjJDN#scrollTo=V1uhJFh2e0Y1>
+  - Lưu ý phiên bản Julia: máy local và CI dùng Julia 1.13.4, còn Colab cài sẵn Julia 1.12.6. Notebook vẫn chạy đúng và cho cùng số tập đóng với bản local (đã đối chiếu ở các cấu hình trong notebook), nên không ghim lại phiên bản.
 - Báo cáo: `docs/Report.pdf` (đang cập nhật)
 
 ## Tài liệu tham khảo chính

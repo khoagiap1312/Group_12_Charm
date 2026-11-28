@@ -114,7 +114,16 @@ function charm_extend!(solver::AbstractCharmSolver, P::Vector{CharmNode{T}}) whe
 end
 
 
-function fit!(solver::AbstractCharmSolver, transactions::Vector{Vector{Int}}, minsup::Real)
+"""
+    fit!(solver, transactions, minsup; order = :none)
+
+Khai thác tập đóng phổ biến. `order` là thứ tự duyệt item ở tầng đầu của IT-tree:
+`:none` (thứ tự của Dict, mặc định), `:support_asc` (support tăng dần, như đề xuất trong bài báo CHARM)
+hoặc `:support_desc`. Thứ tự chỉ ảnh hưởng tốc độ, tập kết quả luôn như nhau.
+"""
+function fit!(solver::AbstractCharmSolver, transactions::Vector{Vector{Int}}, minsup::Real; order::Symbol = :none)
+    order in (:none, :support_asc, :support_desc) ||
+        error("ArgumentError: unknown item order '$order'. Use none, support_asc or support_desc.")
     empty!(solver.closed_itemsets) #clear tập đóng
     empty!(solver.hash_table) #clear hash_table
 
@@ -151,6 +160,12 @@ function fit!(solver::AbstractCharmSolver, transactions::Vector{Vector{Int}}, mi
 
     if isempty(frequent_items)
         return solver
+    end
+
+    if order == :support_asc
+        sort!(frequent_items, by = it -> (length(item_tids[it]), it))
+    elseif order == :support_desc
+        sort!(frequent_items, by = it -> (-length(item_tids[it]), it))
     end
 
     T = typeof(create_tidset(solver, Int[], num_tx)) # kiểu tidset của solver (Vector / Bitset)
